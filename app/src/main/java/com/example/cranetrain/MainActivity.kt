@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.ColorStateList
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -46,6 +47,9 @@ class MainActivity : AppCompatActivity() {
     private var currentWindSpeed = 0
     
     private lateinit var bluetoothStatus: Button
+    private lateinit var connectionIndicator: View
+    private lateinit var forceValue: TextView
+    private lateinit var windValue: TextView
     private lateinit var connectionStatus: TextView
     private lateinit var leftViewPager: ViewPager2
     private lateinit var rightViewPager: ViewPager2
