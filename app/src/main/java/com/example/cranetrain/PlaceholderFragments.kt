@@ -35,14 +35,4 @@ class ObjectAnalysisFragment : Fragment() {
     ): View? {
         return inflater.inflate(R.layout.fragment_object_analysis, container, false)
     }
-}
-
-class AllCamerasFragment : Fragment() {
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? {
-        return inflater.inflate(R.layout.fragment_all_cameras, container, false)
-    }
 } 

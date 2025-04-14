@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Common USB camera vendor IDs -->
+    <usb-device vendor-id="0x0ac8" /> <!-- Z-Star Microelectronics Corp. -->
+    <usb-device vendor-id="0x041e" /> <!-- Creative Technology, Ltd -->
+    <usb-device vendor-id="0x046d" /> <!-- Logitech -->
+    <usb-device vendor-id="0x045e" /> <!-- Microsoft -->
+    <usb-device vendor-id="0x0458" /> <!-- KYE Systems Corp. (Mouse Systems) -->
+    <usb-device vendor-id="0x04f2" /> <!-- Chicony Electronics Co., Ltd -->
+    <usb-device vendor-id="0x055f" /> <!-- Mustek Systems, Inc. -->
+    <usb-device vendor-id="0x05a9" /> <!-- OmniVision Technologies, Inc. -->
+    <usb-device vendor-id="0x05c8" /> <!-- CHENG UEI PRECISION INDUSTRY CO., LTD -->
+    <usb-device vendor-id="0x0c45" /> <!-- Microdia -->
+</resources> 

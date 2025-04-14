@@ -387,6 +387,8 @@ class MainActivity : AppCompatActivity() {
                 runOnUiThread {
                     updateConnectionStatus("Disconnecting...", Color.YELLOW)
                     bluetoothStatus.isEnabled = false
+                    // Reset force value to 0N
+                    forceValue.text = "Force: 0N"
                 }
                 
                 handler.removeCallbacks(connectionTimeoutRunnable)
