@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Crane Train</string>
+    <string name="title_crane_advancement">Crane Advancement Toolkit</string>
+    <string name="force_value">Force: %1$dN</string>
+    <string name="wind_value">Wind: %1$dm/s</string>
+    <string name="motor_attached">Motor: Attached</string>
+    <string name="motor_detached">Motor: Detached</string>
+    <string name="connect_to_model">Connect to Model</string>
+    <string name="connected">Connected</string>
+    <string name="tab_3d_view">3D View</string>
+    <string name="tab_single_camera">Single Camera</string>
+    <string name="tab_object_analysis">Object Analysis</string>
+    <string name="tab_all_cameras">All Cameras</string>
+    <string name="tab_remote_control">Remote Control</string>
+    <string name="tab_numeric_control">Numeric Control</string>
+    <string name="tab_logs">Logs</string>
+</resources>
