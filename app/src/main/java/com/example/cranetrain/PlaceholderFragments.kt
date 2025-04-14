@@ -17,16 +17,6 @@ class ThreeDViewFragment : Fragment() {
     }
 }
 
-class SingleCameraFragment : Fragment() {
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? {
-        return inflater.inflate(R.layout.fragment_single_camera, container, false)
-    }
-}
-
 class ObjectAnalysisFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater,

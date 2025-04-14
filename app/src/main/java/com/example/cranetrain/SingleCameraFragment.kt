@@ -9,8 +9,8 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.FrameLayout
-import android.widget.ImageButton
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
@@ -23,20 +23,21 @@ import com.google.common.util.concurrent.ListenableFuture
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-class AllCamerasFragment : Fragment() {
+class SingleCameraFragment : Fragment() {
     private lateinit var cameraExecutor: ExecutorService
-    private val cameraProviders = mutableListOf<ProcessCameraProvider>()
-    private val previews = mutableListOf<Preview>()
-    private val previewViews = mutableListOf<PreviewView>()
-    private val noSignalOverlays = mutableListOf<FrameLayout>()
-    private val cameraTitles = mutableListOf<TextView>()
-    private val toggleButtons = mutableListOf<ImageButton>()
+    private var cameraProvider: ProcessCameraProvider? = null
+    private var preview: Preview? = null
+    
+    private lateinit var previewView: PreviewView
+    private lateinit var noSignalOverlay: FrameLayout
+    private lateinit var selectedCameraTitle: TextView
+    private val cameraButtons = mutableListOf<Button>()
     
     private var usbManager: UsbManager? = null
     private var availableDeviceCameras = 0
     private var availableUsbCameras = 0
     private var isPermissionGranted = false
-    private var currentDeviceCameraIndex = 0 // 0 for back, 1 for front
+    private var currentCameraIndex = 0 // 0-5 for the 6 possible cameras
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -45,12 +46,8 @@ class AllCamerasFragment : Fragment() {
         if (isGranted) {
             initializeCameras()
         } else {
-            showNoSignal(0)
-            showNoSignal(1)
-            cameraTitles[0].text = "Device Camera (Permission Denied)"
-            cameraTitles[1].text = "Device Camera (Permission Denied)"
-            toggleButtons[0].visibility = View.GONE
-            toggleButtons[1].visibility = View.GONE
+            showNoSignal()
+            updateButtonStates()
         }
     }
 
@@ -59,7 +56,7 @@ class AllCamerasFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        return inflater.inflate(R.layout.fragment_all_cameras, container, false)
+        return inflater.inflate(R.layout.fragment_single_camera, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -70,33 +67,22 @@ class AllCamerasFragment : Fragment() {
     }
 
     private fun initializeViews(view: View) {
+        previewView = view.findViewById(R.id.cameraPreview)
+        noSignalOverlay = view.findViewById(R.id.noSignalOverlay)
+        selectedCameraTitle = view.findViewById(R.id.selectedCameraTitle)
+        
+        // Initialize camera buttons
         for (i in 1..6) {
-            val cameraView = view.findViewById<View>(
-                resources.getIdentifier("camera$i", "id", requireContext().packageName)
+            val button = view.findViewById<Button>(
+                resources.getIdentifier("camera${i}Button", "id", requireContext().packageName)
             )
-            previewViews.add(cameraView.findViewById(R.id.cameraPreview))
-            noSignalOverlays.add(cameraView.findViewById(R.id.noSignalOverlay))
-            cameraTitles.add(cameraView.findViewById(R.id.cameraTitle))
-            toggleButtons.add(cameraView.findViewById(R.id.toggleCameraButton))
-            
-            // Initially show "No Signal" for all cameras
-            showNoSignal(i-1)
-            
-            // Set up toggle button click listeners for device cameras
-            if (i <= 2) {
-                val index = i - 1
-                toggleButtons[index].setOnClickListener {
-                    toggleDeviceCamera(index)
-                }
+            cameraButtons.add(button)
+            button.setOnClickListener {
+                switchToCamera(i - 1)
             }
         }
-    }
-
-    private fun toggleDeviceCamera(index: Int) {
-        if (index > 1 || !isPermissionGranted) return
         
-        currentDeviceCameraIndex = if (currentDeviceCameraIndex == 0) 1 else 0
-        startDeviceCamera(index, currentDeviceCameraIndex)
+        showNoSignal()
     }
 
     private fun checkPermissionAndInitialize() {
@@ -109,7 +95,7 @@ class AllCamerasFragment : Fragment() {
                 initializeCameras()
             }
             shouldShowRequestPermissionRationale(Manifest.permission.CAMERA) -> {
-                showAllNoSignal()
+                showNoSignal()
                 requestPermissionLauncher.launch(Manifest.permission.CAMERA)
             }
             else -> {
@@ -120,15 +106,16 @@ class AllCamerasFragment : Fragment() {
 
     private fun initializeCameras() {
         countAvailableCameras()
-        startAvailableCameras()
+        updateButtonStates()
+        switchToCamera(0) // Start with first available camera
     }
 
     private fun countAvailableCameras() {
         if (isPermissionGranted) {
             val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
             try {
-                val cameraProvider = cameraProviderFuture.get()
-                availableDeviceCameras = minOf(cameraProvider.availableCameraInfos.size, 2)
+                val provider = cameraProviderFuture.get()
+                availableDeviceCameras = minOf(provider.availableCameraInfos.size, 2)
                 Log.d(TAG, "Found $availableDeviceCameras device cameras")
             } catch (e: Exception) {
                 Log.e(TAG, "Error counting device cameras", e)
@@ -144,40 +131,50 @@ class AllCamerasFragment : Fragment() {
         Log.d(TAG, "Found $availableUsbCameras USB cameras")
     }
 
-    private fun startAvailableCameras() {
-        // Handle device cameras
-        if (isPermissionGranted && availableDeviceCameras > 0) {
-            // Show toggle button only if we have multiple device cameras
-            if (availableDeviceCameras > 1) {
-                toggleButtons[0].visibility = View.VISIBLE
-            }
-            startDeviceCamera(0, 0) // Start with back camera
-        } else {
-            showNoSignal(0)
-            showNoSignal(1)
-        }
-
-        // Handle USB cameras
-        var usbIndex = 0
-        for (i in 2 until 6) {
-            if (usbIndex < availableUsbCameras) {
-                startUsbCamera(i, usbIndex)
-                usbIndex++
+    private fun updateButtonStates() {
+        // Update device camera buttons
+        for (i in 0..1) {
+            cameraButtons[i].isEnabled = isPermissionGranted && i < availableDeviceCameras
+            if (i == currentCameraIndex) {
+                cameraButtons[i].setBackgroundColor(ContextCompat.getColor(requireContext(), android.R.color.holo_green_dark))
             } else {
-                showNoSignal(i)
+                cameraButtons[i].setBackgroundColor(ContextCompat.getColor(requireContext(), android.R.color.darker_gray))
+            }
+        }
+        
+        // Update USB camera buttons
+        for (i in 2..5) {
+            cameraButtons[i].isEnabled = (i - 2) < availableUsbCameras
+            if (i == currentCameraIndex) {
+                cameraButtons[i].setBackgroundColor(ContextCompat.getColor(requireContext(), android.R.color.holo_green_dark))
+            } else {
+                cameraButtons[i].setBackgroundColor(ContextCompat.getColor(requireContext(), android.R.color.darker_gray))
             }
         }
     }
 
-    private fun startDeviceCamera(index: Int, cameraId: Int) {
+    private fun switchToCamera(index: Int) {
+        currentCameraIndex = index
+        updateButtonStates()
+        
+        when {
+            index < 2 && isPermissionGranted -> startDeviceCamera(index)
+            index >= 2 -> startUsbCamera(index - 2)
+            else -> showNoSignal()
+        }
+    }
+
+    private fun startDeviceCamera(cameraId: Int) {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
         cameraProviderFuture.addListener({
             try {
-                val cameraProvider = cameraProviderFuture.get()
-                val preview = Preview.Builder()
+                cameraProvider?.unbindAll()
+                cameraProvider = cameraProviderFuture.get()
+                
+                preview = Preview.Builder()
                     .build()
                     .also {
-                        it.setSurfaceProvider(previewViews[index].surfaceProvider)
+                        it.setSurfaceProvider(previewView.surfaceProvider)
                     }
 
                 val cameraSelector = when (cameraId) {
@@ -187,55 +184,38 @@ class AllCamerasFragment : Fragment() {
                 }
 
                 try {
-                    cameraProvider.unbindAll()
-                    cameraProvider.bindToLifecycle(
+                    cameraProvider?.bindToLifecycle(
                         viewLifecycleOwner,
                         cameraSelector,
                         preview
                     )
                     
                     // Update UI
-                    cameraTitles[index].text = if (cameraId == 0) "Back Camera" else "Front Camera"
-                    noSignalOverlays[index].visibility = View.GONE
-                    previewViews[index].visibility = View.VISIBLE
-                    
-                    // Store provider and preview
-                    if (!cameraProviders.contains(cameraProvider)) {
-                        cameraProviders.add(cameraProvider)
-                    }
-                    previews.add(preview)
+                    selectedCameraTitle.text = if (cameraId == 0) "Back Camera" else "Front Camera"
+                    noSignalOverlay.visibility = View.GONE
+                    previewView.visibility = View.VISIBLE
                     
                     Log.d(TAG, "Device camera $cameraId started successfully")
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to bind camera $cameraId", e)
-                    showNoSignal(index)
+                    showNoSignal()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to get camera provider", e)
-                showNoSignal(index)
+                showNoSignal()
             }
         }, ContextCompat.getMainExecutor(requireContext()))
     }
 
-    private fun startUsbCamera(index: Int, usbIndex: Int) {
-        cameraTitles[index].text = "USB Camera ${usbIndex + 1}"
-        showNoSignal(index)
+    private fun startUsbCamera(usbIndex: Int) {
+        selectedCameraTitle.text = "USB Camera ${usbIndex + 1}"
+        showNoSignal()
         // TODO: Implement USB camera initialization when hardware is available
     }
 
-    private fun showNoSignal(index: Int) {
-        noSignalOverlays[index].visibility = View.VISIBLE
-        previewViews[index].visibility = View.GONE
-        if (index < 2) { // Only for device cameras
-            toggleButtons[index].visibility = View.GONE
-        }
-    }
-
-    private fun showAllNoSignal() {
-        for (i in 0 until 6) {
-            showNoSignal(i)
-            cameraTitles[i].text = "Camera ${i + 1}"
-        }
+    private fun showNoSignal() {
+        noSignalOverlay.visibility = View.VISIBLE
+        previewView.visibility = View.GONE
     }
 
     override fun onResume() {
@@ -250,16 +230,10 @@ class AllCamerasFragment : Fragment() {
     override fun onDestroy() {
         super.onDestroy()
         cameraExecutor.shutdown()
-        cameraProviders.forEach { provider ->
-            try {
-                provider.unbindAll()
-            } catch (e: Exception) {
-                Log.e(TAG, "Error unbinding camera provider", e)
-            }
-        }
+        cameraProvider?.unbindAll()
     }
 
     companion object {
-        private const val TAG = "AllCamerasFragment"
+        private const val TAG = "SingleCameraFragment"
     }
 } 
