@@ -1,10 +1,10 @@
 package com.example.cranetrain
 
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import java.text.SimpleDateFormat
@@ -12,6 +12,7 @@ import java.util.*
 
 class LogsFragment : Fragment() {
     private lateinit var logsTextView: TextView
+    private val logs = StringBuilder()
     private val dateFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
     private val maxLogLines = 1000 // Maximum number of log lines to keep
 
@@ -20,51 +21,47 @@ class LogsFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        try {
-            val view = inflater.inflate(R.layout.fragment_logs, container, false)
-            logsTextView = view.findViewById(R.id.logsTextView) ?: throw IllegalStateException("logsTextView not found")
-            return view
-        } catch (e: Exception) {
-            Log.e("LogsFragment", "Error in onCreateView: ${e.message}")
-            return null
+        val view = inflater.inflate(R.layout.fragment_logs, container, false)
+        logsTextView = view.findViewById(R.id.logsTextView)
+        
+        // Set up clear logs button
+        val clearLogsButton = view.findViewById<Button>(R.id.clearLogsButton)
+        clearLogsButton.setOnClickListener {
+            clearLogs()
         }
+        
+        return view
     }
 
     fun addLog(message: String) {
-        try {
-            if (!isAdded || view == null) return
-
+        activity?.runOnUiThread {
             val timestamp = dateFormat.format(Date())
-            val logEntry = "[$timestamp] $message\n"
+            val newLog = "[$timestamp] $message\n"
             
-            activity?.runOnUiThread {
-                try {
-                    val currentText = logsTextView.text.toString()
-                    val newText = if (currentText.isEmpty()) {
-                        logEntry
-                    } else {
-                        currentText + logEntry
-                    }
-                    
-                    // Trim to maxLogLines if needed
-                    val lines = newText.split("\n")
-                    val finalText = if (lines.size > maxLogLines) {
-                        lines.takeLast(maxLogLines).joinToString("\n") + "\n"
-                    } else {
-                        newText
-                    }
-                    
-                    logsTextView.text = finalText
-                    
-                    // Scroll to bottom
-                    val scrollAmount = logsTextView.layout?.getLineTop(logsTextView.lineCount) ?: 0
-                    logsTextView.scrollTo(0, scrollAmount)
-                } catch (e: Exception) {
-                    Log.e("LogsFragment", "Error updating log text: ${e.message}")
-                }
+            // Prepend the new log entry
+            logs.insert(0, newLog)
+            
+            // Trim to maxLogLines if needed
+            val lines = logs.toString().split("\n")
+            if (lines.size > maxLogLines) {
+                logs.clear()
+                logs.append(lines.take(maxLogLines).joinToString("\n") + "\n")
             }
-        } catch (e: Exception) {
-            Log.e("LogsFragment", "Error adding log: ${e.message}")
+            
+            logsTextView.text = logs.toString()
+            
+            // Auto-scroll to top since newest logs are at the top
+            val scrollView = logsTextView.parent.parent as? androidx.core.widget.NestedScrollView
+            scrollView?.post {
+                scrollView.fullScroll(View.FOCUS_UP)
+            }
+        }
+    }
+
+    private fun clearLogs() {
+        activity?.runOnUiThread {
+            logs.clear()
+            logsTextView.text = ""
         }
     }
 } 

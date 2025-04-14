@@ -397,6 +397,14 @@ class MainActivity : AppCompatActivity() {
     private fun updateConnectionStatus(status: String, color: Int) {
         connectionStatus.text = status
         connectionStatus.setTextColor(color)
+        
+        // Only log critical connection status changes
+        if (status == "Connected" || status == "Disconnected" || status == "Connection failed") {
+            val logsFragment = supportFragmentManager.fragments.find { 
+                it is LogsFragment && it.isAdded 
+            } as? LogsFragment
+            logsFragment?.addLog("Connection Status: $status")
+        }
     }
 
     private fun showMessage(message: String, isError: Boolean) {
@@ -455,7 +463,7 @@ class MainActivity : AppCompatActivity() {
                             val logsFragment = supportFragmentManager.fragments.find { 
                                 it is LogsFragment && it.isAdded 
                             } as? LogsFragment
-                            logsFragment?.addLog("Connection lost: ${e.message}")
+                            logsFragment?.addLog("Connection Status: Connection failed")
                             showMessage("Connection lost: ${e.message}", isError = true)
                         }
                         disconnectFromHC05()
@@ -559,6 +567,13 @@ class MainActivity : AppCompatActivity() {
             val commandWithNewline = "$command\n"
             outputStream.write(commandWithNewline.toByteArray())
             outputStream.flush() // Ensure data is sent immediately
+            
+            // Log the sent command
+            val logsFragment = supportFragmentManager.fragments.find { 
+                it is LogsFragment && it.isAdded 
+            } as? LogsFragment
+            logsFragment?.addLog("Sent: $command")
+            
             Log.d("Bluetooth", "Command sent: $command")
         } catch (e: IOException) {
             Log.e("Bluetooth", "Error sending command: ${e.message}")
