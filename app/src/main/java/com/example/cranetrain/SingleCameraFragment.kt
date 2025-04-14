@@ -22,15 +22,18 @@ import androidx.fragment.app.Fragment
 import com.google.common.util.concurrent.ListenableFuture
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import androidx.lifecycle.LifecycleOwner
+import com.example.cranetrain.databinding.FragmentSingleCameraBinding
 
 class SingleCameraFragment : Fragment() {
+    private var _binding: FragmentSingleCameraBinding? = null
+    private val binding get() = _binding!!
     private lateinit var cameraExecutor: ExecutorService
     private var cameraProvider: ProcessCameraProvider? = null
     private var preview: Preview? = null
     
     private lateinit var previewView: PreviewView
     private lateinit var noSignalOverlay: FrameLayout
-    private lateinit var selectedCameraTitle: TextView
     private val cameraButtons = mutableListOf<Button>()
     
     private var usbManager: UsbManager? = null
@@ -38,6 +41,7 @@ class SingleCameraFragment : Fragment() {
     private var availableUsbCameras = 0
     private var isPermissionGranted = false
     private var currentCameraIndex = 0 // 0-5 for the 6 possible cameras
+    private var isFragmentActive = false
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -55,13 +59,15 @@ class SingleCameraFragment : Fragment() {
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
-        return inflater.inflate(R.layout.fragment_single_camera, container, false)
+    ): View {
+        _binding = FragmentSingleCameraBinding.inflate(inflater, container, false)
+        return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         cameraExecutor = Executors.newSingleThreadExecutor()
+        isFragmentActive = true
         initializeViews(view)
         checkPermissionAndInitialize()
     }
@@ -69,7 +75,6 @@ class SingleCameraFragment : Fragment() {
     private fun initializeViews(view: View) {
         previewView = view.findViewById(R.id.cameraPreview)
         noSignalOverlay = view.findViewById(R.id.noSignalOverlay)
-        selectedCameraTitle = view.findViewById(R.id.selectedCameraTitle)
         
         // Initialize camera buttons
         for (i in 1..6) {
@@ -134,20 +139,34 @@ class SingleCameraFragment : Fragment() {
     private fun updateButtonStates() {
         // Update device camera buttons
         for (i in 0..1) {
-            cameraButtons[i].isEnabled = isPermissionGranted && i < availableDeviceCameras
-            if (i == currentCameraIndex) {
-                cameraButtons[i].setBackgroundColor(ContextCompat.getColor(requireContext(), android.R.color.holo_green_dark))
+            val isAvailable = isPermissionGranted && i < availableDeviceCameras
+            cameraButtons[i].isEnabled = isAvailable
+            if (isAvailable) {
+                cameraButtons[i].text = "Camera ${i + 1}"
+                if (i == currentCameraIndex) {
+                    cameraButtons[i].setBackgroundColor(ContextCompat.getColor(requireContext(), android.R.color.holo_green_dark))
+                } else {
+                    cameraButtons[i].setBackgroundColor(ContextCompat.getColor(requireContext(), android.R.color.darker_gray))
+                }
             } else {
+                cameraButtons[i].text = "No Signal"
                 cameraButtons[i].setBackgroundColor(ContextCompat.getColor(requireContext(), android.R.color.darker_gray))
             }
         }
         
         // Update USB camera buttons
         for (i in 2..5) {
-            cameraButtons[i].isEnabled = (i - 2) < availableUsbCameras
-            if (i == currentCameraIndex) {
-                cameraButtons[i].setBackgroundColor(ContextCompat.getColor(requireContext(), android.R.color.holo_green_dark))
+            val isAvailable = (i - 2) < availableUsbCameras
+            cameraButtons[i].isEnabled = isAvailable
+            if (isAvailable) {
+                cameraButtons[i].text = "Camera ${i + 1}"
+                if (i == currentCameraIndex) {
+                    cameraButtons[i].setBackgroundColor(ContextCompat.getColor(requireContext(), android.R.color.holo_green_dark))
+                } else {
+                    cameraButtons[i].setBackgroundColor(ContextCompat.getColor(requireContext(), android.R.color.darker_gray))
+                }
             } else {
+                cameraButtons[i].text = "No Signal"
                 cameraButtons[i].setBackgroundColor(ContextCompat.getColor(requireContext(), android.R.color.darker_gray))
             }
         }
@@ -185,52 +204,58 @@ class SingleCameraFragment : Fragment() {
 
                 try {
                     cameraProvider?.bindToLifecycle(
-                        viewLifecycleOwner,
+                        this as LifecycleOwner,
                         cameraSelector,
                         preview
                     )
                     
                     // Update UI
-                    selectedCameraTitle.text = if (cameraId == 0) "Back Camera" else "Front Camera"
-                    noSignalOverlay.visibility = View.GONE
                     previewView.visibility = View.VISIBLE
+                    noSignalOverlay.visibility = View.GONE
                     
                     Log.d(TAG, "Device camera $cameraId started successfully")
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to bind camera $cameraId", e)
                     showNoSignal()
+                    updateButtonStates()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to get camera provider", e)
                 showNoSignal()
+                updateButtonStates()
             }
         }, ContextCompat.getMainExecutor(requireContext()))
     }
 
     private fun startUsbCamera(usbIndex: Int) {
-        selectedCameraTitle.text = "USB Camera ${usbIndex + 1}"
-        showNoSignal()
+        previewView.visibility = View.GONE
+        noSignalOverlay.visibility = View.VISIBLE
         // TODO: Implement USB camera initialization when hardware is available
     }
 
     private fun showNoSignal() {
-        noSignalOverlay.visibility = View.VISIBLE
         previewView.visibility = View.GONE
+        noSignalOverlay.visibility = View.VISIBLE
+    }
+
+    override fun onPause() {
+        super.onPause()
+        isFragmentActive = false
     }
 
     override fun onResume() {
         super.onResume()
-        if (isPermissionGranted) {
+        if (!isFragmentActive) {
+            isFragmentActive = true
             initializeCameras()
-        } else {
-            checkPermissionAndInitialize()
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
+    override fun onDestroyView() {
+        super.onDestroyView()
         cameraExecutor.shutdown()
         cameraProvider?.unbindAll()
+        _binding = null
     }
 
     companion object {
