@@ -12,15 +12,8 @@ class ThreeDViewFragment : Fragment() {
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View {
-        return TextView(requireContext()).apply {
-            text = "3D visualization will be implemented here"
-            textAlignment = View.TEXT_ALIGNMENT_CENTER
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-        }
+    ): View? {
+        return inflater.inflate(R.layout.fragment_3d_view, container, false)
     }
 }
 
@@ -29,15 +22,8 @@ class SingleCameraFragment : Fragment() {
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View {
-        return TextView(requireContext()).apply {
-            text = "Single camera view will be implemented here"
-            textAlignment = View.TEXT_ALIGNMENT_CENTER
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-        }
+    ): View? {
+        return inflater.inflate(R.layout.fragment_single_camera, container, false)
     }
 }
 
@@ -46,15 +32,8 @@ class ObjectAnalysisFragment : Fragment() {
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View {
-        return TextView(requireContext()).apply {
-            text = "Object analysis will be implemented here"
-            textAlignment = View.TEXT_ALIGNMENT_CENTER
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-        }
+    ): View? {
+        return inflater.inflate(R.layout.fragment_object_analysis, container, false)
     }
 }
 
@@ -63,31 +42,7 @@ class AllCamerasFragment : Fragment() {
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View {
-        return TextView(requireContext()).apply {
-            text = "All cameras view will be implemented here"
-            textAlignment = View.TEXT_ALIGNMENT_CENTER
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-        }
-    }
-}
-
-class LogsFragment : Fragment() {
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        return TextView(requireContext()).apply {
-            text = "System logs will be displayed here"
-            textAlignment = View.TEXT_ALIGNMENT_CENTER
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-        }
+    ): View? {
+        return inflater.inflate(R.layout.fragment_all_cameras, container, false)
     }
 } 

@@ -1,73 +1,97 @@
 package com.example.cranetrain
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.EditText
-import android.widget.LinearLayout
+import android.widget.ImageButton
+import android.widget.TextView
 import androidx.fragment.app.Fragment
 
 class NumericControlFragment : Fragment() {
+    private lateinit var upValue: EditText
+    private lateinit var downValue: EditText
+    private lateinit var leftValue: EditText
+    private lateinit var rightValue: EditText
+    private lateinit var clockwiseValue: EditText
+    private lateinit var anticlockwiseValue: EditText
+    private lateinit var controlsData: TextView
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View {
-        return LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(16, 16, 16, 16)
+    ): View? {
+        try {
+            val view = inflater.inflate(R.layout.fragment_numeric_control, container, false)
+            
+            // Initialize views with null checks
+            upValue = view.findViewById(R.id.upValue) ?: throw IllegalStateException("upValue not found")
+            downValue = view.findViewById(R.id.downValue) ?: throw IllegalStateException("downValue not found")
+            leftValue = view.findViewById(R.id.leftValue) ?: throw IllegalStateException("leftValue not found")
+            rightValue = view.findViewById(R.id.rightValue) ?: throw IllegalStateException("rightValue not found")
+            clockwiseValue = view.findViewById(R.id.clockwiseValue) ?: throw IllegalStateException("clockwiseValue not found")
+            anticlockwiseValue = view.findViewById(R.id.anticlockwiseValue) ?: throw IllegalStateException("anticlockwiseValue not found")
+            controlsData = view.findViewById(R.id.controlsData) ?: throw IllegalStateException("controlsData not found")
 
-            // Add control groups
-            addView(createControlGroup("Up", "u"))
-            addView(createControlGroup("Down", "d"))
-            addView(createControlGroup("Left", "l"))
-            addView(createControlGroup("Right", "r"))
-            addView(createControlGroup("Clockwise", "c"))
-            addView(createControlGroup("Anti-clockwise", "a"))
+            // Set up send buttons with null checks
+            view.findViewById<ImageButton>(R.id.upSendButton)?.setOnClickListener {
+                sendCommand("u", upValue)
+            }
+
+            view.findViewById<ImageButton>(R.id.downSendButton)?.setOnClickListener {
+                sendCommand("d", downValue)
+            }
+
+            view.findViewById<ImageButton>(R.id.leftSendButton)?.setOnClickListener {
+                sendCommand("l", leftValue)
+            }
+
+            view.findViewById<ImageButton>(R.id.rightSendButton)?.setOnClickListener {
+                sendCommand("r", rightValue)
+            }
+
+            view.findViewById<ImageButton>(R.id.clockwiseSendButton)?.setOnClickListener {
+                sendCommand("c", clockwiseValue)
+            }
+
+            view.findViewById<ImageButton>(R.id.anticlockwiseSendButton)?.setOnClickListener {
+                sendCommand("a", anticlockwiseValue)
+            }
+
+            return view
+        } catch (e: Exception) {
+            Log.e("NumericControlFragment", "Error in onCreateView: ${e.message}")
+            return null
         }
     }
 
-    private fun createControlGroup(text: String, command: String): LinearLayout {
-        return LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                setMargins(0, 8, 0, 8)
-            }
-
-            // Add EditText for numeric input
-            val input = EditText(context).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    0,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    1f
-                ).apply {
-                    setMargins(0, 0, 8, 0)
+    private fun sendCommand(command: String, editText: EditText) {
+        try {
+            val value = editText.text.toString()
+            if (value.isNotEmpty()) {
+                // Format: command + value (e.g., "u100" for up with value 100)
+                val formattedCommand = "$command$value"
+                val mainActivity = activity as? MainActivity
+                if (mainActivity == null) {
+                    Log.e("NumericControlFragment", "MainActivity is null")
+                    return
                 }
-                hint = "Enter value"
-                inputType = android.text.InputType.TYPE_CLASS_NUMBER
+                mainActivity.sendCommand(formattedCommand)
             }
-            addView(input)
+        } catch (e: Exception) {
+            Log.e("NumericControlFragment", "Error sending command: ${e.message}")
+        }
+    }
 
-            // Add Button
-            val button = Button(context).apply {
-                this.text = text
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-                setOnClickListener {
-                    val value = input.text.toString()
-                    if (value.isNotEmpty()) {
-                        (activity as? MainActivity)?.sendCommand(command + value)
-                    }
-                }
-            }
-            addView(button)
+    fun updateControlsData(data: String) {
+        try {
+            if (!isAdded || view == null) return
+            controlsData.text = data
+        } catch (e: Exception) {
+            Log.e("NumericControlFragment", "Error updating controls data: ${e.message}")
         }
     }
 } 

@@ -13,6 +13,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
@@ -35,22 +36,17 @@ import kotlin.concurrent.thread
 import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var bluetoothAdapter: BluetoothAdapter
+    private var bluetoothAdapter: BluetoothAdapter? = null
     private var bluetoothSocket: BluetoothSocket? = null
     private val HC05_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
-    private val HC05_MAC_ADDRESS = "98:D3:41:F6:EA:F7" // Replace with your HC-05 MAC address
+    private val HC05_MAC_ADDRESS = "98:D3:41:F6:EA:F7" // Your HC-05 MAC address
     private var isConnected = false
     private var isConnecting = false
+    private var isMotorAttached = false
+    private var currentWindSpeed = 0
     
-    private lateinit var forceValue: TextView
-    private lateinit var windValue: TextView
-    private lateinit var motorStatus: Button
     private lateinit var bluetoothStatus: Button
     private lateinit var connectionStatus: TextView
-    private lateinit var statusData: TextView
-    private lateinit var threeDData: TextView
-    private lateinit var controlsData: TextView
-    
     private lateinit var leftViewPager: ViewPager2
     private lateinit var rightViewPager: ViewPager2
     private lateinit var leftTabLayout: TabLayout
@@ -95,124 +91,164 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        initializeViews()
-        setupViewPagers()
-        setupBluetoothAdapter()
+        try {
+            initializeViews()
+            setupViewPagers()
+            setupBluetoothAdapter()
+
+            // Initialize Bluetooth adapter
+            bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+
+            // Set up motor button
+            val motorButton = findViewById<Button>(R.id.motorButton)
+            motorButton?.setOnClickListener {
+                if (currentWindSpeed < 100) {
+                    isMotorAttached = !isMotorAttached
+                    updateMotorState()
+                    val message = if (isMotorAttached) "Motor attached" else "Motor detached"
+                    showMessage(message, isError = false)
+                } else {
+                    showMessage("Cannot attach motor when wind speed is high", isError = true)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error in onCreate: ${e.message}")
+            showMessage("Error initializing app: ${e.message}", isError = true)
+        }
     }
 
     private fun initializeViews() {
-        forceValue = findViewById(R.id.forceValue)
-        windValue = findViewById(R.id.windValue)
-        motorStatus = findViewById(R.id.motorStatus)
-        bluetoothStatus = findViewById(R.id.bluetoothStatus)
-        connectionStatus = findViewById(R.id.connectionStatus)
-        statusData = findViewById(R.id.statusData)
-        threeDData = findViewById(R.id.threeDData)
-        controlsData = findViewById(R.id.controlsData)
-        leftViewPager = findViewById(R.id.leftViewPager)
-        rightViewPager = findViewById(R.id.rightViewPager)
-        leftTabLayout = findViewById(R.id.leftTabLayout)
-        rightTabLayout = findViewById(R.id.rightTabLayout)
+        try {
+            bluetoothStatus = findViewById(R.id.bluetoothStatus) ?: throw IllegalStateException("bluetoothStatus not found")
+            connectionStatus = findViewById(R.id.connectionStatus) ?: throw IllegalStateException("connectionStatus not found")
+            leftViewPager = findViewById(R.id.leftViewPager) ?: throw IllegalStateException("leftViewPager not found")
+            rightViewPager = findViewById(R.id.rightViewPager) ?: throw IllegalStateException("rightViewPager not found")
+            leftTabLayout = findViewById(R.id.leftTabLayout) ?: throw IllegalStateException("leftTabLayout not found")
+            rightTabLayout = findViewById(R.id.rightTabLayout) ?: throw IllegalStateException("rightTabLayout not found")
 
-        motorStatus.setOnClickListener {
-            toggleMotorStatus()
-        }
-
-        bluetoothStatus.setOnClickListener {
-            if (isConnecting) {
-                showMessage("Connection in progress...", isError = false)
-                return@setOnClickListener
+            bluetoothStatus.setOnClickListener {
+                if (isConnecting) {
+                    showMessage("Connection in progress...", isError = false)
+                    return@setOnClickListener
+                }
+                
+                if (isConnected) {
+                    disconnectFromHC05()
+                } else {
+                    checkBluetoothPermissions()
+                }
             }
-            
-            if (isConnected) {
-                disconnectFromHC05()
-            } else {
-                checkBluetoothPermissions()
-            }
-        }
 
-        updateConnectionStatus("Disconnected", Color.RED)
+            updateConnectionStatus("Disconnected", Color.RED)
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error initializing views: ${e.message}")
+            showMessage("Error initializing views: ${e.message}", isError = true)
+        }
     }
 
     private fun setupViewPagers() {
-        // Left panel setup
-        leftViewPager.adapter = LeftPanelAdapter(this)
-        TabLayoutMediator(leftTabLayout, leftViewPager) { tab, position ->
-            tab.text = when (position) {
-                0 -> getString(R.string.tab_3d_view)
-                1 -> getString(R.string.tab_single_camera)
-                2 -> getString(R.string.tab_object_analysis)
-                else -> ""
-            }
-        }.attach()
+        try {
+            // Left panel setup
+            leftViewPager.adapter = LeftPanelAdapter(this)
+            TabLayoutMediator(leftTabLayout, leftViewPager) { tab, position ->
+                tab.text = when (position) {
+                    0 -> getString(R.string.tab_3d_view)
+                    1 -> getString(R.string.tab_single_camera)
+                    2 -> getString(R.string.tab_object_analysis)
+                    else -> ""
+                }
+            }.attach()
 
-        // Right panel setup
-        rightViewPager.adapter = RightPanelAdapter(this)
-        TabLayoutMediator(rightTabLayout, rightViewPager) { tab, position ->
-            tab.text = when (position) {
-                0 -> getString(R.string.tab_all_cameras)
-                1 -> getString(R.string.tab_remote_control)
-                2 -> getString(R.string.tab_numeric_control)
-                3 -> getString(R.string.tab_logs)
-                else -> ""
-            }
-        }.attach()
+            // Right panel setup
+            rightViewPager.adapter = RightPanelAdapter(this)
+            TabLayoutMediator(rightTabLayout, rightViewPager) { tab, position ->
+                tab.text = when (position) {
+                    0 -> getString(R.string.tab_all_cameras)
+                    1 -> getString(R.string.tab_remote_control)
+                    2 -> getString(R.string.tab_numeric_control)
+                    3 -> getString(R.string.tab_logs)
+                    else -> ""
+                }
+            }.attach()
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error setting up view pagers: ${e.message}")
+            showMessage("Error setting up view pagers: ${e.message}", isError = true)
+        }
     }
 
     private fun setupBluetoothAdapter() {
-        val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-        bluetoothAdapter = bluetoothManager.adapter
-        if (bluetoothAdapter == null) {
-            showMessage("Bluetooth is not available on this device", isError = true)
-            finish()
-            return
+        try {
+            val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+            bluetoothAdapter = bluetoothManager?.adapter
+            if (bluetoothAdapter == null) {
+                showMessage("Bluetooth is not available on this device", isError = true)
+                finish()
+                return
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error setting up Bluetooth adapter: ${e.message}")
+            showMessage("Error setting up Bluetooth adapter: ${e.message}", isError = true)
         }
     }
 
     private fun checkBluetoothPermissions() {
-        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            arrayOf(
-                Manifest.permission.BLUETOOTH_CONNECT,
-                Manifest.permission.BLUETOOTH_SCAN
-            )
-        } else {
-            arrayOf(
-                Manifest.permission.BLUETOOTH,
-                Manifest.permission.BLUETOOTH_ADMIN,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            )
-        }
-
-        // Debug: Check each permission individually
-        val missingPermissions = mutableListOf<String>()
-        permissions.forEach { permission ->
-            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
-                missingPermissions.add(permission)
-                showMessage("Missing permission: $permission", isError = true)
+        try {
+            val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                arrayOf(
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                    Manifest.permission.BLUETOOTH_SCAN
+                )
+            } else {
+                arrayOf(
+                    Manifest.permission.BLUETOOTH,
+                    Manifest.permission.BLUETOOTH_ADMIN,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                )
             }
-        }
 
-        if (missingPermissions.isEmpty()) {
-            showMessage("All permissions already granted", isError = false)
-            initiateBluetoothConnection()
-        } else {
-            showMessage("Requesting ${missingPermissions.size} permissions...", isError = false)
-            requestPermissionLauncher.launch(missingPermissions.toTypedArray())
+            // Debug: Check each permission individually
+            val missingPermissions = mutableListOf<String>()
+            permissions.forEach { permission ->
+                if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                    missingPermissions.add(permission)
+                    Log.d("Bluetooth", "Missing permission: $permission")
+                }
+            }
+
+            if (missingPermissions.isEmpty()) {
+                Log.d("Bluetooth", "All permissions already granted")
+                initiateBluetoothConnection()
+            } else {
+                Log.d("Bluetooth", "Requesting ${missingPermissions.size} permissions...")
+                requestPermissionLauncher.launch(missingPermissions.toTypedArray())
+            }
+        } catch (e: Exception) {
+            Log.e("Bluetooth", "Error checking permissions: ${e.message}")
+            showMessage("Error checking permissions: ${e.message}", isError = true)
         }
     }
 
     private fun initiateBluetoothConnection() {
-        if (!bluetoothAdapter.isEnabled) {
-            showMessage("Requesting Bluetooth enable...", isError = false)
-            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-            enableBluetoothLauncher.launch(enableBtIntent)
-        } else {
-            connectToHC05()
+        try {
+            if (bluetoothAdapter == null) {
+                showMessage("Bluetooth is not available on this device", isError = true)
+                return
+            }
+
+            if (!bluetoothAdapter!!.isEnabled) {
+                showMessage("Requesting Bluetooth enable...", isError = false)
+                val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+                enableBluetoothLauncher.launch(enableBtIntent)
+            } else {
+                connectToHC05()
+            }
+        } catch (e: Exception) {
+            Log.e("Bluetooth", "Error initiating connection: ${e.message}")
+            showMessage("Error initiating Bluetooth connection: ${e.message}", isError = true)
         }
     }
 
@@ -253,17 +289,31 @@ class MainActivity : AppCompatActivity() {
         thread {
             var tempSocket: BluetoothSocket? = null
             try {
-                val device = bluetoothAdapter.getRemoteDevice(HC05_MAC_ADDRESS)
-                tempSocket = device.createRfcommSocketToServiceRecord(HC05_UUID)
-                
+                val device = bluetoothAdapter?.getRemoteDevice(HC05_MAC_ADDRESS)
+                runOnUiThread {
+                    showMessage("Found device: ${device?.name}", isError = false)
+                }
+
+                // Try different methods to create socket
+                try {
+                    tempSocket = device?.createRfcommSocketToServiceRecord(HC05_UUID)
+                } catch (e: IOException) {
+                    runOnUiThread {
+                        showMessage("Failed to create socket with UUID, trying alternative method", isError = true)
+                    }
+                    // Alternative method for some devices
+                    val m = device?.javaClass?.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
+                    tempSocket = m?.invoke(device, 1) as BluetoothSocket
+                }
+
                 runOnUiThread {
                     showMessage("Attempting to connect to HC-05...", isError = false)
                 }
 
                 // Cancel discovery as it slows down the connection
-                bluetoothAdapter.cancelDiscovery()
+                bluetoothAdapter?.cancelDiscovery()
                 
-                tempSocket.connect()
+                tempSocket?.connect()
                 bluetoothSocket = tempSocket
                 
                 // Connection successful
@@ -277,7 +327,11 @@ class MainActivity : AppCompatActivity() {
                     bluetoothStatus.isEnabled = true
                 }
 
+                // Start data reading in a separate thread
                 startBluetoothDataReading()
+                
+                // Send a test message to verify communication
+                sendCommand("TEST")
             } catch (e: IOException) {
                 // Clean up the socket
                 try {
@@ -359,97 +413,176 @@ class MainActivity : AppCompatActivity() {
 
     private fun startBluetoothDataReading() {
         thread {
-            val inputStream = bluetoothSocket?.inputStream
-            val buffer = ByteArray(1024)
-            var bytes: Int
-
-            while (isConnected) {
-                try {
-                    bytes = inputStream?.read(buffer) ?: -1
-                    if (bytes > 0) {
-                        val data = String(buffer, 0, bytes).trim()
-                        processReceivedData(data)
-                    }
-                } catch (e: IOException) {
-                    runOnUiThread {
-                        showMessage("Connection lost: ${e.message}", isError = true)
-                    }
+            try {
+                val inputStream = bluetoothSocket?.inputStream
+                if (inputStream == null) {
+                    Log.e("Bluetooth", "Input stream is null")
                     disconnectFromHC05()
-                    break
+                    return@thread
                 }
+
+                val buffer = ByteArray(100) // Buffer for up to 100 characters
+                val stringBuilder = StringBuilder()
+
+                while (isConnected) {
+                    try {
+                        // Add a small delay to prevent CPU overuse
+                        Thread.sleep(10)
+                        
+                        if (inputStream.available() > 0) {
+                            val bytes = inputStream.read(buffer)
+                            if (bytes > 0) {
+                                for (i in 0 until bytes) {
+                                    val char = buffer[i].toInt().toChar()
+                                    stringBuilder.append(char)
+                                    
+                                    // Process the line when we get a newline or reach 100 characters
+                                    if (char == '\n' || stringBuilder.length >= 100) {
+                                        val data = stringBuilder.toString().trim()
+                                        if (data.isNotEmpty()) {
+                                            runOnUiThread {
+                                                processReceivedData(data)
+                                            }
+                                        }
+                                        stringBuilder.clear()
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e: IOException) {
+                        Log.e("Bluetooth", "Error reading data: ${e.message}")
+                        runOnUiThread {
+                            val logsFragment = supportFragmentManager.fragments.find { 
+                                it is LogsFragment && it.isAdded 
+                            } as? LogsFragment
+                            logsFragment?.addLog("Connection lost: ${e.message}")
+                            showMessage("Connection lost: ${e.message}", isError = true)
+                        }
+                        disconnectFromHC05()
+                        break
+                    } catch (e: InterruptedException) {
+                        Log.d("Bluetooth", "Data reading thread interrupted")
+                        break
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("Bluetooth", "Error in data reading thread: ${e.message}")
+                disconnectFromHC05()
             }
+        }
+    }
+
+    private fun updateUIWithData(parts: List<String>) {
+        try {
+            if (parts.isEmpty()) return
+
+            // Update wind speed and check motor state
+            val windSpeed = parts[0].toIntOrNull()
+            if (windSpeed != null) {
+                checkWindSpeedAndUpdateMotorState(windSpeed)
+            }
+
+            // Update logs with received data
+            val logsFragment = supportFragmentManager.fragments.find { 
+                it is LogsFragment && it.isAdded 
+            } as? LogsFragment
+            logsFragment?.addLog("Received: ${parts.joinToString(", ")}")
+            
+            // Update remote control fragment with status data
+            if (parts.size > 1) {
+                val remoteControlFragment = supportFragmentManager.fragments.find { 
+                    it is RemoteControlFragment && it.isAdded 
+                } as? RemoteControlFragment
+                remoteControlFragment?.updateStatusData(parts[1])
+            }
+            
+            // Update numeric control fragment with controls data
+            if (parts.size > 2) {
+                val numericControlFragment = supportFragmentManager.fragments.find { 
+                    it is NumericControlFragment && it.isAdded 
+                } as? NumericControlFragment
+                numericControlFragment?.updateControlsData(parts[2])
+            }
+        } catch (e: Exception) {
+            Log.e("Bluetooth", "Error updating UI with data: ${e.message}")
         }
     }
 
     private fun processReceivedData(data: String) {
-        runOnUiThread {
-            try {
-                // Split the data by newlines to handle multiple messages
-                val messages = data.split("\n")
-                
-                for (message in messages) {
-                    if (message.isNotEmpty()) {
-                        // Parse the message format: "TYPE:CONTENT"
-                        val parts = message.split(":", limit = 2)
-                        if (parts.size == 2) {
-                            val type = parts[0].trim()
-                            val content = parts[1].trim()
-                            
-                            when (type.uppercase()) {
-                                "STATUS" -> {
-                                    statusData.text = content
-                                    showMessage("Status update: $content", isError = false)
-                                }
-                                "3D" -> {
-                                    threeDData.text = content
-                                    showMessage("3D data: $content", isError = false)
-                                }
-                                "CONTROL" -> {
-                                    controlsData.text = content
-                                    showMessage("Control data: $content", isError = false)
-                                }
-                                else -> {
-                                    showMessage("Unknown data type: $type", isError = true)
-                                }
-                            }
-                        } else {
-                            // If no type is specified, update all displays
-                            statusData.text = message
-                            threeDData.text = message
-                            controlsData.text = message
-                        }
-                    }
+        try {
+            // Split the data by commas
+            val parts = data.split(",")
+            if (parts.isNotEmpty()) {
+                // Update wind speed and check motor state
+                val windSpeed = parts[0].toIntOrNull()
+                if (windSpeed != null) {
+                    checkWindSpeedAndUpdateMotorState(windSpeed)
                 }
-            } catch (e: Exception) {
-                showMessage("Error processing data: ${e.message}", isError = true)
+
+                // Update UI with received data
+                updateUIWithData(parts)
             }
+        } catch (e: Exception) {
+            Log.e("Bluetooth", "Error processing data: ${e.message}")
         }
     }
 
-    private fun toggleMotorStatus() {
-        val currentStatus = motorStatus.text.toString()
-        val newStatus = if (currentStatus == getString(R.string.motor_attached)) {
-            getString(R.string.motor_detached)
+    private fun updateMotorState() {
+        val motorButton = findViewById<Button>(R.id.motorButton)
+        if (isMotorAttached) {
+            motorButton.text = "Motor Attached"
+            motorButton.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_green_light))
         } else {
-            getString(R.string.motor_attached)
+            motorButton.text = "Motor Detached"
+            motorButton.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_red_light))
         }
-        motorStatus.text = newStatus
+    }
+
+    private fun checkWindSpeedAndUpdateMotorState(windSpeed: Int) {
+        currentWindSpeed = windSpeed
+        if (windSpeed > 100) {
+            isMotorAttached = false
+            updateMotorState()
+            showMessage("Motor automatically detached due to high wind speed", isError = true)
+        }
     }
 
     fun sendCommand(command: String) {
-        if (!isConnected) {
-            Toast.makeText(this, "Not connected to HC-05", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        thread {
-            try {
-                bluetoothSocket?.outputStream?.write(command.toByteArray())
-            } catch (e: IOException) {
-                runOnUiThread {
-                    Toast.makeText(this, "Failed to send command: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
+        try {
+            if (!isMotorAttached) {
+                showMessage("Cannot send commands when motor is detached", isError = true)
+                return
             }
+            
+            if (currentWindSpeed > 100) {
+                showMessage("Cannot send commands when wind speed is high", isError = true)
+                return
+            }
+
+            if (!isConnected) {
+                showMessage("Not connected to HC-05", isError = true)
+                return
+            }
+
+            val outputStream = bluetoothSocket?.outputStream
+            if (outputStream == null) {
+                showMessage("Failed to send command: Output stream is null", isError = true)
+                disconnectFromHC05()
+                return
+            }
+
+            // Add newline to ensure command is properly terminated
+            val commandWithNewline = "$command\n"
+            outputStream.write(commandWithNewline.toByteArray())
+            outputStream.flush() // Ensure data is sent immediately
+            Log.d("Bluetooth", "Command sent: $command")
+        } catch (e: IOException) {
+            Log.e("Bluetooth", "Error sending command: ${e.message}")
+            showMessage("Failed to send command: ${e.message}", isError = true)
+            disconnectFromHC05()
+        } catch (e: Exception) {
+            Log.e("Bluetooth", "Unexpected error sending command: ${e.message}")
+            showMessage("Unexpected error sending command: ${e.message}", isError = true)
         }
     }
 
@@ -464,12 +597,17 @@ class LeftPanelAdapter(activity: FragmentActivity) : FragmentStateAdapter(activi
     override fun getItemCount(): Int = 3
 
     override fun createFragment(position: Int): Fragment {
-        return when (position) {
+        val fragment = when (position) {
             0 -> ThreeDViewFragment()
             1 -> SingleCameraFragment()
             2 -> ObjectAnalysisFragment()
             else -> throw IllegalArgumentException("Invalid position")
         }
+        // Set a unique tag for each fragment
+        fragment.arguments = Bundle().apply {
+            putString("TAG", "left_$position")
+        }
+        return fragment
     }
 }
 
@@ -477,12 +615,17 @@ class RightPanelAdapter(activity: FragmentActivity) : FragmentStateAdapter(activ
     override fun getItemCount(): Int = 4
 
     override fun createFragment(position: Int): Fragment {
-        return when (position) {
+        val fragment = when (position) {
             0 -> AllCamerasFragment()
             1 -> RemoteControlFragment()
             2 -> NumericControlFragment()
             3 -> LogsFragment()
             else -> throw IllegalArgumentException("Invalid position")
         }
+        // Set a unique tag for each fragment
+        fragment.arguments = Bundle().apply {
+            putString("TAG", "right_$position")
+        }
+        return fragment
     }
 }

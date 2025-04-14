@@ -1,57 +1,74 @@
 package com.example.cranetrain
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.TextView
 import androidx.fragment.app.Fragment
-import androidx.gridlayout.widget.GridLayout
 
 class RemoteControlFragment : Fragment() {
+    private lateinit var statusData: TextView
+    private lateinit var upButton: Button
+    private lateinit var downButton: Button
+    private lateinit var leftButton: Button
+    private lateinit var rightButton: Button
+    private lateinit var clockwiseButton: Button
+    private lateinit var anticlockwiseButton: Button
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View {
-        return GridLayout(requireContext()).apply {
-            columnCount = 3
-            rowCount = 3
-            useDefaultMargins = true
+    ): View? {
+        try {
+            val view = inflater.inflate(R.layout.fragment_remote_control, container, false)
+            
+            // Initialize views with null checks
+            statusData = view.findViewById(R.id.statusData) ?: throw IllegalStateException("statusData not found")
+            upButton = view.findViewById(R.id.upButton) ?: throw IllegalStateException("upButton not found")
+            downButton = view.findViewById(R.id.downButton) ?: throw IllegalStateException("downButton not found")
+            leftButton = view.findViewById(R.id.leftButton) ?: throw IllegalStateException("leftButton not found")
+            rightButton = view.findViewById(R.id.rightButton) ?: throw IllegalStateException("rightButton not found")
+            clockwiseButton = view.findViewById(R.id.clockwiseButton) ?: throw IllegalStateException("clockwiseButton not found")
+            anticlockwiseButton = view.findViewById(R.id.anticlockwiseButton) ?: throw IllegalStateException("anticlockwiseButton not found")
 
-            // Up button
-            addView(createButton("Up", "u", 0, 1))
+            // Set up button click listeners
+            upButton.setOnClickListener { sendCommand("u") }
+            downButton.setOnClickListener { sendCommand("d") }
+            leftButton.setOnClickListener { sendCommand("l") }
+            rightButton.setOnClickListener { sendCommand("r") }
+            clockwiseButton.setOnClickListener { sendCommand("c") }
+            anticlockwiseButton.setOnClickListener { sendCommand("a") }
 
-            // Left button
-            addView(createButton("Left", "l", 1, 0))
-
-            // Right button
-            addView(createButton("Right", "r", 1, 2))
-
-            // Down button
-            addView(createButton("Down", "d", 2, 1))
-
-            // Clockwise button
-            addView(createButton("Clockwise", "c", 1, 2))
-
-            // Anti-clockwise button
-            addView(createButton("Anti-clockwise", "a", 1, 0))
+            return view
+        } catch (e: Exception) {
+            Log.e("RemoteControlFragment", "Error in onCreateView: ${e.message}")
+            return null
         }
     }
 
-    private fun createButton(text: String, command: String, row: Int, col: Int): Button {
-        return Button(context).apply {
-            this.text = text
-            layoutParams = GridLayout.LayoutParams().apply {
-                width = ViewGroup.LayoutParams.WRAP_CONTENT
-                height = ViewGroup.LayoutParams.WRAP_CONTENT
-                setMargins(8, 8, 8, 8)
-                rowSpec = GridLayout.spec(row)
-                columnSpec = GridLayout.spec(col)
+    private fun sendCommand(command: String) {
+        try {
+            val mainActivity = activity as? MainActivity
+            if (mainActivity == null) {
+                Log.e("RemoteControlFragment", "MainActivity is null")
+                return
             }
-            setOnClickListener {
-                (activity as? MainActivity)?.sendCommand(command)
-            }
+            mainActivity.sendCommand(command)
+        } catch (e: Exception) {
+            Log.e("RemoteControlFragment", "Error sending command: ${e.message}")
+        }
+    }
+
+    fun updateStatusData(data: String) {
+        try {
+            if (!isAdded || view == null) return
+            statusData.text = "Status Data: $data"
+        } catch (e: Exception) {
+            Log.e("RemoteControlFragment", "Error updating status data: ${e.message}")
         }
     }
 } 

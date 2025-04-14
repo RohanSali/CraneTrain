@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Numeric Control"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Up control -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0.3"
+                    android:text="Up"
+                    android:textSize="16sp" />
+
+                <EditText
+                    android:id="@+id/upValue"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0.5"
+                    android:layout_marginHorizontal="8dp"
+                    android:inputType="number" />
+
+                <ImageButton
+                    android:id="@+id/upSendButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0.2"
+                    android:src="@android:drawable/ic_menu_send"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Send Up Command" />
+            </LinearLayout>
+
+            <!-- Down control -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0.3"
+                    android:text="Down"
+                    android:textSize="16sp" />
+
+                <EditText
+                    android:id="@+id/downValue"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0.5"
+                    android:layout_marginHorizontal="8dp"
+                    android:inputType="number" />
+
+                <ImageButton
+                    android:id="@+id/downSendButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0.2"
+                    android:src="@android:drawable/ic_menu_send"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Send Down Command" />
+            </LinearLayout>
+
+            <!-- Left control -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0.3"
+                    android:text="Left"
+                    android:textSize="16sp" />
+
+                <EditText
+                    android:id="@+id/leftValue"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0.5"
+                    android:layout_marginHorizontal="8dp"
+                    android:inputType="number" />
+
+                <ImageButton
+                    android:id="@+id/leftSendButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0.2"
+                    android:src="@android:drawable/ic_menu_send"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Send Left Command" />
+            </LinearLayout>
+
+            <!-- Right control -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0.3"
+                    android:text="Right"
+                    android:textSize="16sp" />
+
+                <EditText
+                    android:id="@+id/rightValue"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0.5"
+                    android:layout_marginHorizontal="8dp"
+                    android:inputType="number" />
+
+                <ImageButton
+                    android:id="@+id/rightSendButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0.2"
+                    android:src="@android:drawable/ic_menu_send"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Send Right Command" />
+            </LinearLayout>
+
+            <!-- Clockwise control -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0.3"
+                    android:text="Clockwise"
+                    android:textSize="16sp" />
+
+                <EditText
+                    android:id="@+id/clockwiseValue"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0.5"
+                    android:layout_marginHorizontal="8dp"
+                    android:inputType="number" />
+
+                <ImageButton
+                    android:id="@+id/clockwiseSendButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0.2"
+                    android:src="@android:drawable/ic_menu_send"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Send Clockwise Command" />
+            </LinearLayout>
+
+            <!-- Anti-clockwise control -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0.3"
+                    android:text="Anti-clockwise"
+                    android:textSize="16sp" />
+
+                <EditText
+                    android:id="@+id/anticlockwiseValue"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0.5"
+                    android:layout_marginHorizontal="8dp"
+                    android:inputType="number" />
+
+                <ImageButton
+                    android:id="@+id/anticlockwiseSendButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="0.2"
+                    android:src="@android:drawable/ic_menu_send"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Send Anti-clockwise Command" />
+            </LinearLayout>
+
+            <!-- Controls Data Display -->
+            <TextView
+                android:id="@+id/controlsData"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Controls Data: Waiting for data..."
+                android:textSize="14sp" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout> 
