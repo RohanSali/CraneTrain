@@ -9,20 +9,20 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Numeric Control"
-        android:textSize="18sp"
-        android:textStyle="bold" />
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp"/>
 
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_height="match_parent">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- Up control -->
+            <!-- Up Control -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -49,12 +49,12 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="0.2"
-                    android:src="@android:drawable/ic_menu_send"
-                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_arrow_right"
+                    android:background="@drawable/button_background"
                     android:contentDescription="Send Up Command" />
             </LinearLayout>
 
-            <!-- Down control -->
+            <!-- Down Control -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -81,12 +81,12 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="0.2"
-                    android:src="@android:drawable/ic_menu_send"
-                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_arrow_right"
+                    android:background="@drawable/button_background"
                     android:contentDescription="Send Down Command" />
             </LinearLayout>
 
-            <!-- Left control -->
+            <!-- Left Control -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -113,12 +113,12 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="0.2"
-                    android:src="@android:drawable/ic_menu_send"
-                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_arrow_right"
+                    android:background="@drawable/button_background"
                     android:contentDescription="Send Left Command" />
             </LinearLayout>
 
-            <!-- Right control -->
+            <!-- Right Control -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -145,12 +145,12 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="0.2"
-                    android:src="@android:drawable/ic_menu_send"
-                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_arrow_right"
+                    android:background="@drawable/button_background"
                     android:contentDescription="Send Right Command" />
             </LinearLayout>
 
-            <!-- Clockwise control -->
+            <!-- Clockwise Control -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -177,12 +177,12 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="0.2"
-                    android:src="@android:drawable/ic_menu_send"
-                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_arrow_right"
+                    android:background="@drawable/button_background"
                     android:contentDescription="Send Clockwise Command" />
             </LinearLayout>
 
-            <!-- Anti-clockwise control -->
+            <!-- Anti-clockwise Control -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -209,19 +209,12 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="0.2"
-                    android:src="@android:drawable/ic_menu_send"
-                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_arrow_right"
+                    android:background="@drawable/button_background"
                     android:contentDescription="Send Anti-clockwise Command" />
             </LinearLayout>
 
-            <!-- Controls Data Display -->
-            <TextView
-                android:id="@+id/controlsData"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:text="Controls Data: Waiting for data..."
-                android:textSize="14sp" />
         </LinearLayout>
     </ScrollView>
+
 </LinearLayout> 

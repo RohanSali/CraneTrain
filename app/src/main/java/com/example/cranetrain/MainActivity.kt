@@ -487,22 +487,6 @@ class MainActivity : AppCompatActivity() {
                 it is LogsFragment && it.isAdded 
             } as? LogsFragment
             logsFragment?.addLog("Received: ${parts.joinToString(", ")}")
-            
-            // Update remote control fragment with status data
-            if (parts.size > 1) {
-                val remoteControlFragment = supportFragmentManager.fragments.find { 
-                    it is RemoteControlFragment && it.isAdded 
-                } as? RemoteControlFragment
-                remoteControlFragment?.updateStatusData(parts[1])
-            }
-            
-            // Update numeric control fragment with controls data
-            if (parts.size > 2) {
-                val numericControlFragment = supportFragmentManager.fragments.find { 
-                    it is NumericControlFragment && it.isAdded 
-                } as? NumericControlFragment
-                numericControlFragment?.updateControlsData(parts[2])
-            }
         } catch (e: Exception) {
             Log.e("Bluetooth", "Error updating UI with data: ${e.message}")
         }

@@ -7,7 +7,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.ImageButton
-import android.widget.TextView
 import androidx.fragment.app.Fragment
 
 class NumericControlFragment : Fragment() {
@@ -17,7 +16,6 @@ class NumericControlFragment : Fragment() {
     private lateinit var rightValue: EditText
     private lateinit var clockwiseValue: EditText
     private lateinit var anticlockwiseValue: EditText
-    private lateinit var controlsData: TextView
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -27,38 +25,37 @@ class NumericControlFragment : Fragment() {
         try {
             val view = inflater.inflate(R.layout.fragment_numeric_control, container, false)
             
-            // Initialize views with null checks
-            upValue = view.findViewById(R.id.upValue) ?: throw IllegalStateException("upValue not found")
-            downValue = view.findViewById(R.id.downValue) ?: throw IllegalStateException("downValue not found")
-            leftValue = view.findViewById(R.id.leftValue) ?: throw IllegalStateException("leftValue not found")
-            rightValue = view.findViewById(R.id.rightValue) ?: throw IllegalStateException("rightValue not found")
-            clockwiseValue = view.findViewById(R.id.clockwiseValue) ?: throw IllegalStateException("clockwiseValue not found")
-            anticlockwiseValue = view.findViewById(R.id.anticlockwiseValue) ?: throw IllegalStateException("anticlockwiseValue not found")
-            controlsData = view.findViewById(R.id.controlsData) ?: throw IllegalStateException("controlsData not found")
+            // Initialize views
+            upValue = view.findViewById(R.id.upValue)
+            downValue = view.findViewById(R.id.downValue)
+            leftValue = view.findViewById(R.id.leftValue)
+            rightValue = view.findViewById(R.id.rightValue)
+            clockwiseValue = view.findViewById(R.id.clockwiseValue)
+            anticlockwiseValue = view.findViewById(R.id.anticlockwiseValue)
 
-            // Set up send buttons with null checks
+            // Set up send buttons with original command logic
             view.findViewById<ImageButton>(R.id.upSendButton)?.setOnClickListener {
-                sendCommand("u", upValue)
+                sendCommand("u", upValue) // Up -> "u"
             }
 
             view.findViewById<ImageButton>(R.id.downSendButton)?.setOnClickListener {
-                sendCommand("d", downValue)
+                sendCommand("d", downValue) // Down -> "d"
             }
 
             view.findViewById<ImageButton>(R.id.leftSendButton)?.setOnClickListener {
-                sendCommand("l", leftValue)
+                sendCommand("l", leftValue) // Left -> "l"
             }
 
             view.findViewById<ImageButton>(R.id.rightSendButton)?.setOnClickListener {
-                sendCommand("r", rightValue)
+                sendCommand("r", rightValue) // Right -> "r"
             }
 
             view.findViewById<ImageButton>(R.id.clockwiseSendButton)?.setOnClickListener {
-                sendCommand("c", clockwiseValue)
+                sendCommand("c", clockwiseValue) // Clockwise -> "c"
             }
 
             view.findViewById<ImageButton>(R.id.anticlockwiseSendButton)?.setOnClickListener {
-                sendCommand("a", anticlockwiseValue)
+                sendCommand("a", anticlockwiseValue) // Anti-clockwise -> "a"
             }
 
             return view
@@ -83,15 +80,6 @@ class NumericControlFragment : Fragment() {
             }
         } catch (e: Exception) {
             Log.e("NumericControlFragment", "Error sending command: ${e.message}")
-        }
-    }
-
-    fun updateControlsData(data: String) {
-        try {
-            if (!isAdded || view == null) return
-            controlsData.text = data
-        } catch (e: Exception) {
-            Log.e("NumericControlFragment", "Error updating controls data: ${e.message}")
         }
     }
 } 
