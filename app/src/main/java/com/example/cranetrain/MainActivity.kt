@@ -95,6 +95,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Add periodic command sending runnable
+    private val periodicCommandRunnable = object : Runnable {
+        override fun run() {
+            if (isConnected) {
+                sendCommand("7", checkMotorStatus = false) // Don't check motor status for periodic command
+            }
+            // Schedule the next execution after 5 seconds
+            handler.postDelayed(this, 5000)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -337,8 +348,8 @@ class MainActivity : AppCompatActivity() {
                 // Start data reading in a separate thread
                 startBluetoothDataReading()
                 
-                // Send a test message to verify communication
-                sendCommand("TEST")
+                // Start periodic command sending
+                handler.post(periodicCommandRunnable)
             } catch (e: IOException) {
                 // Clean up the socket
                 try {
@@ -379,6 +390,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 
                 handler.removeCallbacks(connectionTimeoutRunnable)
+                handler.removeCallbacks(periodicCommandRunnable) // Stop periodic command sending
                 bluetoothSocket?.close()
                 
                 runOnUiThread {
@@ -495,42 +507,54 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun updateUIWithData(parts: List<String>) {
+    private fun processReceivedData(data: String) {
         try {
-            if (parts.isEmpty()) return
-
-            // Update wind speed and check motor state
-            val windSpeed = parts[0].toIntOrNull()
-            if (windSpeed != null) {
-                checkWindSpeedAndUpdateMotorState(windSpeed)
+            // Split the data by comma to handle multiple values
+            val parts = data.split(",").map { it.trim() }
+            
+            // Process each part of the data
+            parts.forEach { part ->
+                when {
+                    part.startsWith("Reading:") -> {
+                        // Extract the numeric value from "Reading: xxx"
+                        val value = part.substringAfter(":").trim()
+                        updateForceValue(value)
+                    }
+                    part.toIntOrNull() != null -> {
+                        // This is the wind speed value
+                        val windSpeed = part.toInt()
+                        checkWindSpeedAndUpdateMotorState(windSpeed)
+                    }
+                }
             }
-
+            
             // Update logs with received data
             val logsFragment = supportFragmentManager.fragments.find { 
                 it is LogsFragment && it.isAdded 
             } as? LogsFragment
-            logsFragment?.addLog("Received: ${parts.joinToString(", ")}")
+            logsFragment?.addLog("Received: $data")
         } catch (e: Exception) {
-            Log.e("Bluetooth", "Error updating UI with data: ${e.message}")
+            Log.e("Bluetooth", "Error processing data: ${e.message}")
         }
     }
 
-    private fun processReceivedData(data: String) {
-        try {
-            // Split the data by commas
-            val parts = data.split(",")
-            if (parts.isNotEmpty()) {
-                // Update wind speed and check motor state
-                val windSpeed = parts[0].toIntOrNull()
-                if (windSpeed != null) {
-                    checkWindSpeedAndUpdateMotorState(windSpeed)
+    private fun updateForceValue(value: String) {
+        runOnUiThread {
+            try {
+                // Try to convert the value to a number
+                val numericValue = value.toDoubleOrNull()
+                if (numericValue != null) {
+                    // Format the value with 2 decimal places and add 'kg' unit
+                    forceValue.text = "Force: ${String.format("%.2f", numericValue)} kg"
+                } else {
+                    // If conversion fails, show the raw value with 'kg'
+                    forceValue.text = "Force: ${value} kg"
                 }
-
-                // Update UI with received data
-                updateUIWithData(parts)
+                Log.d("Bluetooth", "Force value updated to: ${forceValue.text}")
+            } catch (e: Exception) {
+                Log.e("Bluetooth", "Error updating force value: ${e.message}")
+                // Keep the last valid value if there's an error
             }
-        } catch (e: Exception) {
-            Log.e("Bluetooth", "Error processing data: ${e.message}")
         }
     }
 
@@ -554,21 +578,24 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun sendCommand(command: String) {
+    fun sendCommand(command: String, checkMotorStatus: Boolean = true) {
         try {
-            if (!isMotorAttached) {
-                showMessage("Cannot send commands when motor is detached", isError = true)
-                return
-            }
-            
-            if (currentWindSpeed > 100) {
-                showMessage("Cannot send commands when wind speed is high", isError = true)
-                return
-            }
-
             if (!isConnected) {
                 showMessage("Not connected to HC-05", isError = true)
                 return
+            }
+
+            // Check motor status for all commands except periodic '7'
+            if (checkMotorStatus) {
+                if (!isMotorAttached) {
+                    showMessage("Cannot send commands when motor is detached", isError = true)
+                    return
+                }
+                
+                if (currentWindSpeed > 100) {
+                    showMessage("Cannot send commands when wind speed is high", isError = true)
+                    return
+                }
             }
 
             val outputStream = bluetoothSocket?.outputStream
@@ -603,6 +630,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacks(connectionTimeoutRunnable)
+        handler.removeCallbacks(periodicCommandRunnable) // Stop periodic command sending
         disconnectFromHC05()
     }
 }

@@ -4,7 +4,6 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="8dp"
     android:background="#F5F5F5">
 
     <TextView
@@ -14,124 +13,140 @@
         android:textSize="20sp"
         android:textColor="#333333"
         android:textStyle="bold"
-        android:layout_marginBottom="12dp"/>
+        android:layout_margin="16dp"/>
 
-    <androidx.cardview.widget.CardView
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="4dp"
-        app:cardBackgroundColor="#FFFFFF">
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="12dp"
-            android:gravity="center">
+            android:padding="8dp">
 
-            <!-- Directional Controls -->
-            <LinearLayout
-                android:layout_width="wrap_content"
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="@drawable/dpad_background"
-                android:padding="8dp">
+                android:layout_marginBottom="8dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp"
+                app:cardBackgroundColor="#FFFFFF">
 
-                <!-- Up Button -->
-                <Button
-                    android:id="@+id/btnUp"
-                    android:layout_width="60dp"
-                    android:layout_height="60dp"
-                    android:layout_gravity="center"
-                    android:text="↑"
-                    android:textSize="24sp"
-                    android:textColor="#FFFFFF"
-                    android:background="@drawable/button_background"
-                    android:layout_marginBottom="4dp"
-                    android:elevation="2dp"/>
-
-                <!-- Left and Right Buttons -->
                 <LinearLayout
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                    android:orientation="vertical"
+                    android:padding="12dp"
+                    android:gravity="center">
 
-                    <Button
-                        android:id="@+id/btnLeft"
-                        android:layout_width="60dp"
-                        android:layout_height="60dp"
-                        android:text="←"
-                        android:textSize="24sp"
-                        android:textColor="#FFFFFF"
-                        android:background="@drawable/button_background"
-                        android:layout_marginEnd="4dp"
-                        android:elevation="2dp"/>
+                    <!-- Directional Controls -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:background="@drawable/dpad_background"
+                        android:padding="8dp">
 
-                    <Button
-                        android:id="@+id/btnRight"
-                        android:layout_width="60dp"
-                        android:layout_height="60dp"
-                        android:text="→"
-                        android:textSize="24sp"
-                        android:textColor="#FFFFFF"
-                        android:background="@drawable/button_background"
-                        android:layout_marginStart="4dp"
-                        android:elevation="2dp"/>
+                        <!-- Up Button -->
+                        <Button
+                            android:id="@+id/btnUp"
+                            android:layout_width="60dp"
+                            android:layout_height="60dp"
+                            android:layout_gravity="center"
+                            android:text="↑"
+                            android:textSize="24sp"
+                            android:textColor="#FFFFFF"
+                            android:background="@drawable/button_background"
+                            android:layout_marginBottom="4dp"
+                            android:elevation="2dp"/>
+
+                        <!-- Left and Right Buttons -->
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
+
+                            <Button
+                                android:id="@+id/btnLeft"
+                                android:layout_width="60dp"
+                                android:layout_height="60dp"
+                                android:text="←"
+                                android:textSize="24sp"
+                                android:textColor="#FFFFFF"
+                                android:background="@drawable/button_background"
+                                android:layout_marginEnd="4dp"
+                                android:elevation="2dp"/>
+
+                            <Button
+                                android:id="@+id/btnRight"
+                                android:layout_width="60dp"
+                                android:layout_height="60dp"
+                                android:text="→"
+                                android:textSize="24sp"
+                                android:textColor="#FFFFFF"
+                                android:background="@drawable/button_background"
+                                android:layout_marginStart="4dp"
+                                android:elevation="2dp"/>
+
+                        </LinearLayout>
+
+                        <!-- Down Button -->
+                        <Button
+                            android:id="@+id/btnDown"
+                            android:layout_width="60dp"
+                            android:layout_height="60dp"
+                            android:layout_gravity="center"
+                            android:text="↓"
+                            android:textSize="24sp"
+                            android:textColor="#FFFFFF"
+                            android:background="@drawable/button_background"
+                            android:layout_marginTop="4dp"
+                            android:elevation="2dp"/>
+
+                    </LinearLayout>
+
+                    <!-- Rotation Controls -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="16dp"
+                        android:background="@drawable/rotation_background"
+                        android:padding="8dp">
+
+                        <Button
+                            android:id="@+id/btnClockwise"
+                            android:layout_width="90dp"
+                            android:layout_height="45dp"
+                            android:text="↻"
+                            android:textSize="24sp"
+                            android:textColor="#FFFFFF"
+                            android:background="@drawable/rotation_button_background"
+                            android:layout_marginEnd="4dp"
+                            android:elevation="2dp"/>
+
+                        <Button
+                            android:id="@+id/btnAntiClockwise"
+                            android:layout_width="90dp"
+                            android:layout_height="45dp"
+                            android:text="↺"
+                            android:textSize="24sp"
+                            android:textColor="#FFFFFF"
+                            android:background="@drawable/rotation_button_background"
+                            android:layout_marginStart="4dp"
+                            android:elevation="2dp"/>
+
+                    </LinearLayout>
 
                 </LinearLayout>
 
-                <!-- Down Button -->
-                <Button
-                    android:id="@+id/btnDown"
-                    android:layout_width="60dp"
-                    android:layout_height="60dp"
-                    android:layout_gravity="center"
-                    android:text="↓"
-                    android:textSize="24sp"
-                    android:textColor="#FFFFFF"
-                    android:background="@drawable/button_background"
-                    android:layout_marginTop="4dp"
-                    android:elevation="2dp"/>
-
-            </LinearLayout>
-
-            <!-- Rotation Controls -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/rotation_background"
-                android:padding="8dp">
-
-                <Button
-                    android:id="@+id/btnClockwise"
-                    android:layout_width="90dp"
-                    android:layout_height="45dp"
-                    android:text="↻"
-                    android:textSize="24sp"
-                    android:textColor="#FFFFFF"
-                    android:background="@drawable/rotation_button_background"
-                    android:layout_marginEnd="4dp"
-                    android:elevation="2dp"/>
-
-                <Button
-                    android:id="@+id/btnAntiClockwise"
-                    android:layout_width="90dp"
-                    android:layout_height="45dp"
-                    android:text="↺"
-                    android:textSize="24sp"
-                    android:textColor="#FFFFFF"
-                    android:background="@drawable/rotation_button_background"
-                    android:layout_marginStart="4dp"
-                    android:elevation="2dp"/>
-
-            </LinearLayout>
+            </androidx.cardview.widget.CardView>
 
         </LinearLayout>
 
-    </androidx.cardview.widget.CardView>
+    </androidx.core.widget.NestedScrollView>
 
 </LinearLayout> 
