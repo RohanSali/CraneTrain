@@ -9,7 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
-import android.graphics.ColorStateList
+import android.content.res.ColorStateList
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -50,7 +50,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var connectionIndicator: View
     private lateinit var forceValue: TextView
     private lateinit var windValue: TextView
-    private lateinit var connectionStatus: TextView
+    private lateinit var motorButton: Button
     private lateinit var leftViewPager: ViewPager2
     private lateinit var rightViewPager: ViewPager2
     private lateinit var leftTabLayout: TabLayout
@@ -108,8 +108,8 @@ class MainActivity : AppCompatActivity() {
             bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
 
             // Set up motor button
-            val motorButton = findViewById<Button>(R.id.motorButton)
-            motorButton?.setOnClickListener {
+            motorButton = findViewById(R.id.motorButton)
+            motorButton.setOnClickListener {
                 if (currentWindSpeed < 100) {
                     isMotorAttached = !isMotorAttached
                     updateMotorState()
@@ -128,11 +128,14 @@ class MainActivity : AppCompatActivity() {
     private fun initializeViews() {
         try {
             bluetoothStatus = findViewById(R.id.bluetoothStatus) ?: throw IllegalStateException("bluetoothStatus not found")
-            connectionStatus = findViewById(R.id.connectionStatus) ?: throw IllegalStateException("connectionStatus not found")
             leftViewPager = findViewById(R.id.leftViewPager) ?: throw IllegalStateException("leftViewPager not found")
             rightViewPager = findViewById(R.id.rightViewPager) ?: throw IllegalStateException("rightViewPager not found")
             leftTabLayout = findViewById(R.id.leftTabLayout) ?: throw IllegalStateException("leftTabLayout not found")
             rightTabLayout = findViewById(R.id.rightTabLayout) ?: throw IllegalStateException("rightTabLayout not found")
+            connectionIndicator = findViewById(R.id.connectionIndicator)
+            forceValue = findViewById(R.id.forceValue)
+            windValue = findViewById(R.id.windValue)
+            motorButton = findViewById(R.id.motorButton)
 
             bluetoothStatus.setOnClickListener {
                 if (isConnecting) {
@@ -399,8 +402,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateConnectionStatus(status: String, color: Int) {
-        connectionStatus.text = status
-        connectionStatus.setTextColor(color)
+        // Make the indicator visible when updating status
+        connectionIndicator.visibility = View.VISIBLE
+        
+        // Update the connection indicator color
+        when (status) {
+            "Connected" -> connectionIndicator.backgroundTintList = ColorStateList.valueOf(Color.GREEN)
+            "Disconnected" -> connectionIndicator.backgroundTintList = ColorStateList.valueOf(Color.RED)
+            "Connection failed" -> connectionIndicator.backgroundTintList = ColorStateList.valueOf(Color.RED)
+            "Connecting..." -> connectionIndicator.backgroundTintList = ColorStateList.valueOf(Color.YELLOW)
+        }
         
         // Only log critical connection status changes
         if (status == "Connected" || status == "Disconnected" || status == "Connection failed") {

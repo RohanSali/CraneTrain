@@ -19,26 +19,30 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp">
 
             <!-- Left Section: Title -->
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
+                android:layout_weight="1.2"
                 android:text="Crane Advancement Toolkit"
                 android:textColor="@android:color/white"
                 android:textSize="18sp"
                 android:ellipsize="end"
-                android:maxLines="1" />
+                android:maxLines="1"
+                android:layout_marginEnd="16dp" />
 
             <!-- Middle Section: Values -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:layout_weight="1"
+                android:layout_weight="0.8"
                 android:gravity="center"
-                android:orientation="horizontal">
+                android:orientation="horizontal"
+                android:layout_marginEnd="16dp">
 
                 <TextView
                     android:id="@+id/forceValue"
@@ -62,7 +66,7 @@
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:layout_weight="1"
+                android:layout_weight="1.4"
                 android:gravity="end|center_vertical"
                 android:orientation="horizontal">
 
@@ -71,6 +75,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="8dp"
+                    android:minWidth="120dp"
                     android:backgroundTint="#4CAF50"
                     android:text="@string/motor_detached"
                     android:textColor="@android:color/white"
@@ -81,6 +86,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="8dp"
+                    android:minWidth="120dp"
                     android:backgroundTint="#2196F3"
                     android:text="@string/connect_to_model"
                     android:textColor="@android:color/white"
@@ -92,7 +98,8 @@
                     android:layout_height="12dp"
                     android:layout_marginEnd="8dp"
                     android:background="@drawable/connection_indicator"
-                    android:backgroundTint="#FF0000" />
+                    android:backgroundTint="#FF0000"
+                    android:visibility="invisible" />
             </LinearLayout>
         </LinearLayout>
     </androidx.appcompat.widget.Toolbar>
