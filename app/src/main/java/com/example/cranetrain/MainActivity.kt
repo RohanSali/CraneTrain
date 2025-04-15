@@ -239,9 +239,20 @@ class MainActivity : AppCompatActivity() {
         
         // Update the connection indicator color
         when (status) {
-            "Connected" -> binding.connectionIndicator.backgroundTintList = ColorStateList.valueOf(Color.GREEN)
-            "Disconnected" -> binding.connectionIndicator.backgroundTintList = ColorStateList.valueOf(Color.RED)
-            "Connection failed" -> binding.connectionIndicator.backgroundTintList = ColorStateList.valueOf(Color.RED)
+            "Connected" -> {
+                binding.connectionIndicator.backgroundTintList = ColorStateList.valueOf(Color.GREEN)
+                binding.forceStatusIndicator.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_green_dark))
+            }
+            "Disconnected" -> {
+                binding.connectionIndicator.backgroundTintList = ColorStateList.valueOf(Color.RED)
+                binding.forceStatusIndicator.setBackgroundColor(ContextCompat.getColor(this, android.R.color.transparent))
+                binding.forceValue.text = "Force: 0N"
+            }
+            "Connection failed" -> {
+                binding.connectionIndicator.backgroundTintList = ColorStateList.valueOf(Color.RED)
+                binding.forceStatusIndicator.setBackgroundColor(ContextCompat.getColor(this, android.R.color.transparent))
+                binding.forceValue.text = "Force: 0N"
+            }
             "Connecting..." -> binding.connectionIndicator.backgroundTintList = ColorStateList.valueOf(Color.YELLOW)
         }
         
