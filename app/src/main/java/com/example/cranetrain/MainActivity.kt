@@ -642,11 +642,11 @@ class MainActivity : AppCompatActivity() {
                 // Try to convert the value to a number
                 val numericValue = value.toDoubleOrNull()
                 if (numericValue != null) {
-                    // Format the value with 2 decimal places and add 'kg' unit
-                    binding.forceValue.text = "Force: ${String.format("%.2f", numericValue)} kg"
+                    // Format the value with 2 decimal places and add 'N' unit
+                    binding.forceValue.text = "Force: ${String.format("%.2f", numericValue)} N"
                 } else {
-                    // If conversion fails, show the raw value with 'kg'
-                    binding.forceValue.text = "Force: ${value} kg"
+                    // If conversion fails, show the raw value with 'N'
+                    binding.forceValue.text = "Force: ${value} N"
                 }
                 Log.d("Bluetooth", "Force value updated to: ${binding.forceValue.text}")
             } catch (e: Exception) {
