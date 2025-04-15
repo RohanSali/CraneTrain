@@ -35,6 +35,7 @@ import java.io.IOException
 import java.util.*
 import kotlin.concurrent.thread
 import java.util.concurrent.TimeUnit
+import com.example.cranetrain.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
     private var bluetoothAdapter: BluetoothAdapter? = null
@@ -46,25 +47,14 @@ class MainActivity : AppCompatActivity() {
     private var isMotorAttached = false
     private var currentWindSpeed = 0
     
-    private lateinit var bluetoothStatus: Button
-    private lateinit var connectionIndicator: View
-    private lateinit var forceValue: TextView
-    private lateinit var windValue: TextView
-    private lateinit var motorButton: Button
-    private lateinit var leftViewPager: ViewPager2
-    private lateinit var rightViewPager: ViewPager2
-    private lateinit var leftTabLayout: TabLayout
-    private lateinit var rightTabLayout: TabLayout
+    private lateinit var binding: ActivityMainBinding
+    private lateinit var windDataManager: WindDataManager
 
     private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val allGranted = permissions.entries.all { it.value }
-        if (allGranted) {
-            showMessage("Bluetooth permissions granted", isError = false)
-            initiateBluetoothConnection()
-        } else {
-            showMessage("Bluetooth permissions are required to connect", isError = true)
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            startWindUpdates()
         }
     }
 
@@ -88,7 +78,7 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 showMessage("Connection timeout. Please try again.", isError = true)
                 updateConnectionStatus("Connection timeout", Color.RED)
-                bluetoothStatus.isEnabled = true
+                binding.bluetoothStatus.isEnabled = true
             }
             bluetoothSocket?.close()
             bluetoothSocket = null
@@ -106,49 +96,107 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private var windUpdateHandler = Handler(Looper.getMainLooper())
+    private val REAL_WIND_DURATION = 20000L // 20 seconds for real values
+    private val FAKE_WIND_DURATION = 10000L // 10 seconds for fake values
+    private val WIND_DIRECTION_CHANGE_INTERVAL = 1800000L // 30 minutes for direction changes
+    private var isUsingRandomWind = false
+    private var currentWindDirection = 0f // Initial direction
+    private var lastRealWindUpdate = 0L // Track last real wind update
+    private var windUpdateCycle = 0L // Track the current cycle
+
+    private val windUpdateRunnable = object : Runnable {
+        override fun run() {
+            if (isUsingRandomWind) {
+                val randomWindSpeed = (20..65).random().toFloat()
+                updateWindDisplay(randomWindSpeed, currentWindDirection)
+                Log.d("Wind", "Random wind update - Speed: $randomWindSpeed m/s, Direction: $currentWindDirection°")
+            }
+            windUpdateHandler.postDelayed(this, 1000) // Update every second
+        }
+    }
+
+    private val windDirectionChangeRunnable = object : Runnable {
+        override fun run() {
+            if (isUsingRandomWind) {
+                // Change direction to a random value between 0 and 360 degrees
+                currentWindDirection = (0..360).random().toFloat()
+                Log.d("Wind", "Wind direction changed to: ${currentWindDirection}°")
+            }
+            windUpdateHandler.postDelayed(this, WIND_DIRECTION_CHANGE_INTERVAL)
+        }
+    }
+
+    private val windCycleRunnable = object : Runnable {
+        override fun run() {
+            windUpdateCycle++
+            val cycleTime = System.currentTimeMillis() - lastRealWindUpdate
+            
+            if (cycleTime < REAL_WIND_DURATION) {
+                // Real wind phase (20 seconds)
+                isUsingRandomWind = false
+                Log.d("Wind", "Real wind phase - Cycle: $windUpdateCycle")
+            } else if (cycleTime < REAL_WIND_DURATION + FAKE_WIND_DURATION) {
+                // Fake wind phase (10 seconds)
+                if (!isUsingRandomWind) {
+                    isUsingRandomWind = true
+                    Log.d("Wind", "Switching to fake wind values - Cycle: $windUpdateCycle")
+                }
+            } else {
+                // Reset cycle
+                lastRealWindUpdate = System.currentTimeMillis()
+                windUpdateCycle = 0
+                Log.d("Wind", "Resetting wind cycle")
+            }
+            
+            windUpdateHandler.postDelayed(this, 1000) // Check every second
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         try {
-            initializeViews()
             setupViewPagers()
             setupBluetoothAdapter()
-
-            // Initialize Bluetooth adapter
-            bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-
-            // Set up motor button
-            motorButton = findViewById(R.id.motorButton)
-            motorButton.setOnClickListener {
-                if (currentWindSpeed < 100) {
-                    isMotorAttached = !isMotorAttached
-                    updateMotorState()
-                    val message = if (isMotorAttached) "Motor attached" else "Motor detached"
-                    showMessage(message, isError = false)
-                } else {
-                    showMessage("Cannot attach motor when wind speed is high", isError = true)
-                }
-            }
+            setupMotorButton()
+            initializeWindDataManager()
+            checkLocationPermission()
         } catch (e: Exception) {
             Log.e("MainActivity", "Error in onCreate: ${e.message}")
             showMessage("Error initializing app: ${e.message}", isError = true)
         }
     }
 
-    private fun initializeViews() {
+    private fun setupViewPagers() {
         try {
-            bluetoothStatus = findViewById(R.id.bluetoothStatus) ?: throw IllegalStateException("bluetoothStatus not found")
-            leftViewPager = findViewById(R.id.leftViewPager) ?: throw IllegalStateException("leftViewPager not found")
-            rightViewPager = findViewById(R.id.rightViewPager) ?: throw IllegalStateException("rightViewPager not found")
-            leftTabLayout = findViewById(R.id.leftTabLayout) ?: throw IllegalStateException("leftTabLayout not found")
-            rightTabLayout = findViewById(R.id.rightTabLayout) ?: throw IllegalStateException("rightTabLayout not found")
-            connectionIndicator = findViewById(R.id.connectionIndicator)
-            forceValue = findViewById(R.id.forceValue)
-            windValue = findViewById(R.id.windValue)
-            motorButton = findViewById(R.id.motorButton)
+            // Left panel setup
+            binding.leftViewPager.adapter = LeftPanelAdapter(this)
+            TabLayoutMediator(binding.leftTabLayout, binding.leftViewPager) { tab, position ->
+                tab.text = when (position) {
+                    0 -> getString(R.string.tab_3d_view)
+                    1 -> getString(R.string.tab_single_camera)
+                    2 -> getString(R.string.tab_object_analysis)
+                    else -> ""
+                }
+            }.attach()
 
-            bluetoothStatus.setOnClickListener {
+            // Right panel setup
+            binding.rightViewPager.adapter = RightPanelAdapter(this)
+            TabLayoutMediator(binding.rightTabLayout, binding.rightViewPager) { tab, position ->
+                tab.text = when (position) {
+                    0 -> getString(R.string.tab_all_cameras)
+                    1 -> getString(R.string.tab_remote_control)
+                    2 -> getString(R.string.tab_numeric_control)
+                    3 -> getString(R.string.tab_logs)
+                    else -> ""
+                }
+            }.attach()
+
+            // Setup Bluetooth status button
+            binding.bluetoothStatus.setOnClickListener {
                 if (isConnecting) {
                     showMessage("Connection in progress...", isError = false)
                     return@setOnClickListener
@@ -163,39 +211,97 @@ class MainActivity : AppCompatActivity() {
 
             updateConnectionStatus("Disconnected", Color.RED)
         } catch (e: Exception) {
-            Log.e("MainActivity", "Error initializing views: ${e.message}")
-            showMessage("Error initializing views: ${e.message}", isError = true)
-        }
-    }
-
-    private fun setupViewPagers() {
-        try {
-            // Left panel setup
-            leftViewPager.adapter = LeftPanelAdapter(this)
-            TabLayoutMediator(leftTabLayout, leftViewPager) { tab, position ->
-                tab.text = when (position) {
-                    0 -> getString(R.string.tab_3d_view)
-                    1 -> getString(R.string.tab_single_camera)
-                    2 -> getString(R.string.tab_object_analysis)
-                    else -> ""
-                }
-            }.attach()
-
-            // Right panel setup
-            rightViewPager.adapter = RightPanelAdapter(this)
-            TabLayoutMediator(rightTabLayout, rightViewPager) { tab, position ->
-                tab.text = when (position) {
-                    0 -> getString(R.string.tab_all_cameras)
-                    1 -> getString(R.string.tab_remote_control)
-                    2 -> getString(R.string.tab_numeric_control)
-                    3 -> getString(R.string.tab_logs)
-                    else -> ""
-                }
-            }.attach()
-        } catch (e: Exception) {
             Log.e("MainActivity", "Error setting up view pagers: ${e.message}")
             showMessage("Error setting up view pagers: ${e.message}", isError = true)
         }
+    }
+
+    private fun setupMotorButton() {
+        binding.motorButton.setOnClickListener {
+            if (currentWindSpeed < 100) {
+                isMotorAttached = !isMotorAttached
+                updateMotorState()
+                val message = if (isMotorAttached) "Motor attached" else "Motor detached"
+                showMessage(message, isError = false)
+            } else {
+                showMessage("Cannot attach motor when wind speed is high", isError = true)
+            }
+        }
+    }
+
+    private fun initializeWindDataManager() {
+        windDataManager = WindDataManager(this)
+    }
+
+    private fun updateConnectionStatus(status: String, color: Int) {
+        // Make the indicator visible when updating status
+        binding.connectionIndicator.visibility = View.VISIBLE
+        
+        // Update the connection indicator color
+        when (status) {
+            "Connected" -> binding.connectionIndicator.backgroundTintList = ColorStateList.valueOf(Color.GREEN)
+            "Disconnected" -> binding.connectionIndicator.backgroundTintList = ColorStateList.valueOf(Color.RED)
+            "Connection failed" -> binding.connectionIndicator.backgroundTintList = ColorStateList.valueOf(Color.RED)
+            "Connecting..." -> binding.connectionIndicator.backgroundTintList = ColorStateList.valueOf(Color.YELLOW)
+        }
+        
+        // Only log critical connection status changes
+        if (status == "Connected" || status == "Disconnected" || status == "Connection failed") {
+            val logsFragment = supportFragmentManager.fragments.find { 
+                it is LogsFragment && it.isAdded 
+            } as? LogsFragment
+            logsFragment?.addLog("Connection Status: $status")
+        }
+    }
+
+    private fun updateMotorState() {
+        if (isMotorAttached) {
+            binding.motorButton.text = "Motor Attached"
+            binding.motorButton.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_green_light))
+        } else {
+            binding.motorButton.text = "Motor Detached"
+            binding.motorButton.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_red_light))
+        }
+    }
+
+    private fun updateWindDisplay(speed: Float, direction: Float) {
+        try {
+            binding.windSpeedValue.text = String.format("%.1f", speed)
+            binding.windDirectionValue.text = String.format("%.0f°", direction)
+            
+            // Update status indicator based on whether we're using real data
+            binding.windStatusIndicator.setBackgroundColor(
+                ContextCompat.getColor(
+                    this,
+                    if (isUsingRandomWind) android.R.color.transparent else android.R.color.holo_green_dark
+                )
+            )
+            
+            // Update motor state based on wind speed
+            checkWindSpeedAndUpdateMotorState(speed.toInt())
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error updating wind display: ${e.message}")
+        }
+    }
+
+    private fun checkWindSpeedAndUpdateMotorState(windSpeed: Int) {
+        currentWindSpeed = windSpeed
+        if (windSpeed > 100) {
+            isMotorAttached = false
+            updateMotorState()
+            showMessage("Motor automatically detached due to high wind speed", isError = true)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        handler.removeCallbacks(connectionTimeoutRunnable)
+        handler.removeCallbacks(periodicCommandRunnable)
+        windUpdateHandler.removeCallbacks(windUpdateRunnable)
+        windUpdateHandler.removeCallbacks(windDirectionChangeRunnable)
+        windUpdateHandler.removeCallbacks(windCycleRunnable)
+        disconnectFromHC05()
+        windDataManager.stopUpdates()
     }
 
     private fun setupBluetoothAdapter() {
@@ -242,7 +348,7 @@ class MainActivity : AppCompatActivity() {
                 initiateBluetoothConnection()
             } else {
                 Log.d("Bluetooth", "Requesting ${missingPermissions.size} permissions...")
-                requestPermissionLauncher.launch(missingPermissions.toTypedArray())
+                requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
             }
         } catch (e: Exception) {
             Log.e("Bluetooth", "Error checking permissions: ${e.message}")
@@ -299,7 +405,7 @@ class MainActivity : AppCompatActivity() {
 
         isConnecting = true
         updateConnectionStatus("Connecting...", Color.YELLOW)
-        bluetoothStatus.isEnabled = false
+        binding.bluetoothStatus.isEnabled = false
 
         // Set connection timeout
         handler.postDelayed(connectionTimeoutRunnable, CONNECTION_TIMEOUT)
@@ -339,10 +445,10 @@ class MainActivity : AppCompatActivity() {
                 isConnected = true
                 
                 runOnUiThread {
-                    bluetoothStatus.text = getString(R.string.connected)
+                    binding.bluetoothStatus.text = getString(R.string.connected)
                     updateConnectionStatus("Connected", Color.GREEN)
                     showMessage("Successfully connected to HC-05", isError = false)
-                    bluetoothStatus.isEnabled = true
+                    binding.bluetoothStatus.isEnabled = true
                 }
 
                 // Start data reading in a separate thread
@@ -362,7 +468,7 @@ class MainActivity : AppCompatActivity() {
                 runOnUiThread {
                     showMessage("Connection failed: ${e.message}", isError = true)
                     updateConnectionStatus("Connection failed", Color.RED)
-                    bluetoothStatus.isEnabled = true
+                    binding.bluetoothStatus.isEnabled = true
                 }
                 disconnectFromHC05()
             } catch (e: Exception) {
@@ -370,7 +476,7 @@ class MainActivity : AppCompatActivity() {
                 runOnUiThread {
                     showMessage("Unexpected error: ${e.message}", isError = true)
                     updateConnectionStatus("Connection error", Color.RED)
-                    bluetoothStatus.isEnabled = true
+                    binding.bluetoothStatus.isEnabled = true
                 }
                 disconnectFromHC05()
             } finally {
@@ -386,9 +492,9 @@ class MainActivity : AppCompatActivity() {
             try {
                 runOnUiThread {
                     updateConnectionStatus("Disconnecting...", Color.YELLOW)
-                    bluetoothStatus.isEnabled = false
+                    binding.bluetoothStatus.isEnabled = false
                     // Reset force value to 0N
-                    forceValue.text = "Force: 0N"
+                    binding.forceValue.text = "Force: 0N"
                 }
                 
                 handler.removeCallbacks(connectionTimeoutRunnable)
@@ -407,32 +513,11 @@ class MainActivity : AppCompatActivity() {
                 isConnected = false
                 isConnecting = false
                 runOnUiThread {
-                    bluetoothStatus.text = getString(R.string.connect_to_model)
+                    binding.bluetoothStatus.text = getString(R.string.connect_to_model)
                     updateConnectionStatus("Disconnected", Color.RED)
-                    bluetoothStatus.isEnabled = true
+                    binding.bluetoothStatus.isEnabled = true
                 }
             }
-        }
-    }
-
-    private fun updateConnectionStatus(status: String, color: Int) {
-        // Make the indicator visible when updating status
-        connectionIndicator.visibility = View.VISIBLE
-        
-        // Update the connection indicator color
-        when (status) {
-            "Connected" -> connectionIndicator.backgroundTintList = ColorStateList.valueOf(Color.GREEN)
-            "Disconnected" -> connectionIndicator.backgroundTintList = ColorStateList.valueOf(Color.RED)
-            "Connection failed" -> connectionIndicator.backgroundTintList = ColorStateList.valueOf(Color.RED)
-            "Connecting..." -> connectionIndicator.backgroundTintList = ColorStateList.valueOf(Color.YELLOW)
-        }
-        
-        // Only log critical connection status changes
-        if (status == "Connected" || status == "Disconnected" || status == "Connection failed") {
-            val logsFragment = supportFragmentManager.fragments.find { 
-                it is LogsFragment && it.isAdded 
-            } as? LogsFragment
-            logsFragment?.addLog("Connection Status: $status")
         }
     }
 
@@ -547,12 +632,12 @@ class MainActivity : AppCompatActivity() {
                 val numericValue = value.toDoubleOrNull()
                 if (numericValue != null) {
                     // Format the value with 2 decimal places and add 'kg' unit
-                    forceValue.text = "Force: ${String.format("%.2f", numericValue)} kg"
+                    binding.forceValue.text = "Force: ${String.format("%.2f", numericValue)} kg"
                 } else {
                     // If conversion fails, show the raw value with 'kg'
-                    forceValue.text = "Force: ${value} kg"
+                    binding.forceValue.text = "Force: ${value} kg"
                 }
-                Log.d("Bluetooth", "Force value updated to: ${forceValue.text}")
+                Log.d("Bluetooth", "Force value updated to: ${binding.forceValue.text}")
             } catch (e: Exception) {
                 Log.e("Bluetooth", "Error updating force value: ${e.message}")
                 // Keep the last valid value if there's an error
@@ -560,23 +645,37 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun updateMotorState() {
-        val motorButton = findViewById<Button>(R.id.motorButton)
-        if (isMotorAttached) {
-            motorButton.text = "Motor Attached"
-            motorButton.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_green_light))
-        } else {
-            motorButton.text = "Motor Detached"
-            motorButton.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_red_light))
+    private fun checkLocationPermission() {
+        when {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                startWindUpdates()
+            }
+            else -> {
+                requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            }
         }
     }
 
-    private fun checkWindSpeedAndUpdateMotorState(windSpeed: Int) {
-        currentWindSpeed = windSpeed
-        if (windSpeed > 100) {
-            isMotorAttached = false
-            updateMotorState()
-            showMessage("Motor automatically detached due to high wind speed", isError = true)
+    private fun startWindUpdates() {
+        // Start with real wind values
+        isUsingRandomWind = false
+        lastRealWindUpdate = System.currentTimeMillis()
+        windUpdateCycle = 0
+
+        // Start all update runnables
+        windUpdateRunnable.run()
+        windDirectionChangeRunnable.run()
+        windCycleRunnable.run()
+
+        // Try to get real wind data
+        windDataManager.startUpdates { speed, direction ->
+            if (!isUsingRandomWind) {
+                updateWindDisplay(speed, direction)
+                Log.d("Wind", "Real wind update - Speed: $speed m/s, Direction: $direction°")
+            }
         }
     }
 
@@ -627,13 +726,6 @@ class MainActivity : AppCompatActivity() {
             Log.e("Bluetooth", "Unexpected error sending command: ${e.message}")
             showMessage("Unexpected error sending command: ${e.message}", isError = true)
         }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        handler.removeCallbacks(connectionTimeoutRunnable)
-        handler.removeCallbacks(periodicCommandRunnable) // Stop periodic command sending
-        disconnectFromHC05()
     }
 }
 
