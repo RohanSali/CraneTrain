@@ -27,22 +27,22 @@
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1.2"
+                android:layout_weight="1.1"
                 android:text="Crane Advancement Toolkit"
                 android:textColor="@android:color/white"
                 android:textSize="18sp"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:layout_marginEnd="16dp" />
+                android:layout_marginEnd="4dp" />
 
             <!-- Middle Section: Values -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:layout_weight="0.8"
+                android:layout_weight="1"
                 android:gravity="center"
                 android:orientation="horizontal"
-                android:layout_marginEnd="16dp">
+                android:layout_marginEnd="4dp">
 
                 <TextView
                     android:id="@+id/forceValue"
