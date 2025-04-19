@@ -186,14 +186,84 @@ class MainActivity : AppCompatActivity() {
             // Right panel setup
             binding.rightViewPager.adapter = RightPanelAdapter(this)
             TabLayoutMediator(binding.rightTabLayout, binding.rightViewPager) { tab, position ->
-                tab.text = when (position) {
-                    0 -> getString(R.string.tab_all_cameras)
-                    1 -> getString(R.string.tab_remote_control)
-                    2 -> getString(R.string.tab_numeric_control)
-                    3 -> getString(R.string.tab_logs)
-                    else -> ""
+                when (position) {
+                    0 -> {
+                        tab.icon = ContextCompat.getDrawable(this, R.drawable.ic_cameras)
+                        tab.text = getString(R.string.tab_all_cameras)
+                    }
+                    1 -> {
+                        tab.icon = ContextCompat.getDrawable(this, R.drawable.ic_remote)
+                        tab.text = getString(R.string.tab_remote_control)
+                    }
+                    2 -> {
+                        tab.icon = ContextCompat.getDrawable(this, R.drawable.ic_numeric)
+                        tab.text = getString(R.string.tab_numeric_control)
+                    }
+                    3 -> {
+                        tab.icon = ContextCompat.getDrawable(this, R.drawable.ic_logs)
+                        tab.text = getString(R.string.tab_logs)
+                    }
                 }
             }.attach()
+
+            // Setup tab selection listener
+            binding.rightTabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+                override fun onTabSelected(tab: TabLayout.Tab?) {
+                    tab?.let {
+                        // Show only text for selected tab
+                        it.text = when (it.position) {
+                            0 -> getString(R.string.tab_all_cameras)
+                            1 -> getString(R.string.tab_remote_control)
+                            2 -> getString(R.string.tab_numeric_control)
+                            3 -> getString(R.string.tab_logs)
+                            else -> ""
+                        }
+                        // Hide icon for selected tab
+                        it.icon = null
+                        // Set text color to primary
+                        it.view.findViewById<TextView>(android.R.id.text1)?.setTextColor(
+                            ContextCompat.getColor(this@MainActivity, R.color.primary)
+                        )
+                    }
+                }
+
+                override fun onTabUnselected(tab: TabLayout.Tab?) {
+                    tab?.let {
+                        // Hide text for unselected tabs
+                        it.text = ""
+                        // Show icon for unselected tabs
+                        it.icon = when (it.position) {
+                            0 -> ContextCompat.getDrawable(this@MainActivity, R.drawable.ic_cameras)
+                            1 -> ContextCompat.getDrawable(this@MainActivity, R.drawable.ic_remote)
+                            2 -> ContextCompat.getDrawable(this@MainActivity, R.drawable.ic_numeric)
+                            3 -> ContextCompat.getDrawable(this@MainActivity, R.drawable.ic_logs)
+                            else -> null
+                        }
+                        // Set icon color to gray
+                        it.icon?.setTint(ContextCompat.getColor(this@MainActivity, R.color.icon_color_inactive))
+                    }
+                }
+
+                override fun onTabReselected(tab: TabLayout.Tab?) {
+                    // No special handling needed
+                }
+            })
+
+            // Initialize all tabs with icons
+            for (i in 0 until binding.rightTabLayout.tabCount) {
+                val tab = binding.rightTabLayout.getTabAt(i)
+                tab?.let {
+                    it.text = ""
+                    it.icon = when (i) {
+                        0 -> ContextCompat.getDrawable(this, R.drawable.ic_cameras)
+                        1 -> ContextCompat.getDrawable(this, R.drawable.ic_remote)
+                        2 -> ContextCompat.getDrawable(this, R.drawable.ic_numeric)
+                        3 -> ContextCompat.getDrawable(this, R.drawable.ic_logs)
+                        else -> null
+                    }
+                    it.icon?.setTint(ContextCompat.getColor(this, R.color.icon_color_inactive))
+                }
+            }
 
             // Setup Bluetooth status button
             binding.bluetoothStatus.setOnClickListener {

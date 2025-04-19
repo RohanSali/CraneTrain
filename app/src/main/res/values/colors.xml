@@ -5,4 +5,6 @@
     <color name="accent">#03A9F4</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="icon_color">#FFA726</color>
+    <color name="icon_color_inactive">#757575</color>
 </resources>
