@@ -142,8 +142,8 @@
 
                 <FrameLayout
                     android:id="@+id/noSignalOverlay"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
                     android:background="#1E1E1E"
                     android:visibility="visible"
                     app:layout_constraintTop_toTopOf="parent"
@@ -159,7 +159,7 @@
                         android:textColor="#FFFFFF"
                         android:textSize="16sp"
                         android:textStyle="bold"/>
-                </FrameLayout>
+</FrameLayout> 
             </androidx.constraintlayout.widget.ConstraintLayout>
         </androidx.cardview.widget.CardView>
     </androidx.constraintlayout.widget.ConstraintLayout>

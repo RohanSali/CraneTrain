@@ -179,6 +179,7 @@ class MainActivity : AppCompatActivity() {
                     0 -> getString(R.string.tab_3d_view)
                     1 -> getString(R.string.tab_single_camera)
                     2 -> getString(R.string.tab_object_analysis)
+                    3 -> getString(R.string.tab_jib_analysis)
                     else -> ""
                 }
             }.attach()
@@ -693,6 +694,22 @@ class MainActivity : AppCompatActivity() {
                         val windSpeed = part.toInt()
                         checkWindSpeedAndUpdateMotorState(windSpeed)
                     }
+                    part.startsWith("Jib:") -> {
+                        // Process jib data in format "Jib:vertical,horizontal,angular,force"
+                        val jibData = part.substringAfter(":").split(",")
+                        if (jibData.size == 4) {
+                            val vertical = jibData[0].toIntOrNull() ?: 0
+                            val horizontal = jibData[1].toIntOrNull() ?: 0
+                            val angular = jibData[2].toIntOrNull() ?: 0
+                            val force = jibData[3].toIntOrNull() ?: 0
+                            
+                            // Update jib analysis fragment if it exists
+                            val jibFragment = supportFragmentManager.fragments.find { 
+                                it is JibAnalysisFragment && it.isAdded 
+                            } as? JibAnalysisFragment
+                            jibFragment?.updateJibData(vertical, horizontal, angular, force)
+                        }
+                    }
                 }
             }
             
@@ -811,13 +828,14 @@ class MainActivity : AppCompatActivity() {
 }
 
 class LeftPanelAdapter(activity: FragmentActivity) : FragmentStateAdapter(activity) {
-    override fun getItemCount(): Int = 3
+    override fun getItemCount(): Int = 4
 
     override fun createFragment(position: Int): Fragment {
         val fragment = when (position) {
             0 -> ThreeDViewFragment()
             1 -> SingleCameraFragment()
             2 -> ObjectAnalysisFragment()
+            3 -> JibAnalysisFragment()
             else -> throw IllegalArgumentException("Invalid position")
         }
         // Set a unique tag for each fragment

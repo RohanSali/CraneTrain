@@ -15,4 +15,5 @@
     <string name="tab_remote_control">Remote Control</string>
     <string name="tab_numeric_control">Numeric Control</string>
     <string name="tab_logs">Logs</string>
+    <string name="tab_jib_analysis">Jib Analysis</string>
 </resources>

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="1000"
+    android:viewportHeight="100">
+
+    <!-- Jib Base Line -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeColor="#FFFFFF"
+        android:pathData="M50,50 L950,50" />
+
+    <!-- Major Markings (0,5,10) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeColor="#FFFFFF"
+        android:pathData="M50,30 L50,70" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeColor="#FFFFFF"
+        android:pathData="M500,30 L500,70" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeColor="#FFFFFF"
+        android:pathData="M950,30 L950,70" />
+
+    <!-- Minor Markings (1-4,6-9) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:strokeColor="#FFFFFF"
+        android:pathData="M140,40 L140,60" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:strokeColor="#FFFFFF"
+        android:pathData="M230,40 L230,60" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:strokeColor="#FFFFFF"
+        android:pathData="M320,40 L320,60" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:strokeColor="#FFFFFF"
+        android:pathData="M410,40 L410,60" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:strokeColor="#FFFFFF"
+        android:pathData="M590,40 L590,60" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:strokeColor="#FFFFFF"
+        android:pathData="M680,40 L680,60" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:strokeColor="#FFFFFF"
+        android:pathData="M770,40 L770,60" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:strokeColor="#FFFFFF"
+        android:pathData="M860,40 L860,60" />
+
+    <!-- Position Numbers -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:strokeColor="#FFFFFF"
+        android:pathData="M40,80 L60,80" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:strokeColor="#FFFFFF"
+        android:pathData="M490,80 L510,80" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:strokeColor="#FFFFFF"
+        android:pathData="M940,80 L960,80" />
+</vector> 
