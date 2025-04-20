@@ -272,27 +272,28 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:padding="8dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toBottomOf="@id/scaleCard"
         app:layout_constraintVertical_bias="0.0"
         tools:layout_editor_absoluteX="0dp">
 
         <!-- Hook Image -->
+
+        <!-- Force Value Display -->
+
         <ImageView
             android:id="@+id/hookImage"
             android:layout_width="55dp"
             android:layout_height="48dp"
-            android:layout_marginStart="32dp"
+            android:layout_marginStart="40dp"
             android:contentDescription="Hook"
             android:src="@drawable/hook" />
 
-        <!-- Force Value Display -->
         <TextView
             android:id="@+id/forceValue"
             android:layout_width="55dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="32dp"
+            android:layout_marginStart="40dp"
             android:layout_marginTop="48dp"
             android:text="0 N"
             android:textAlignment="center"

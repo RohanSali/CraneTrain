@@ -61,16 +61,46 @@ class JibAnalysisFragment : Fragment() {
         }
     }
 
-    fun updateJibData(vertical: Int, horizontal: Int, angular: Int, force: Int) {
-        verticalPosition = vertical
-        horizontalPosition = horizontal
-        angularPosition = angular
-        forceValue = force
-        
-        saveValues()
-        updatePositionDisplay()
-        updateHookPosition()
-        updateForceDisplay()
+    fun processArduinoData(data: String) {
+        when {
+            data.startsWith("Horizontal Position : ") -> {
+                try {
+                    val value = data.substring("Horizontal Position : ".length).trim().toInt()
+                    horizontalPosition = value
+                    updateHookPosition()
+                    updatePositionDisplay()
+                } catch (e: NumberFormatException) {
+                    // Handle invalid number format
+                }
+            }
+            data.startsWith("Vertical Position : ") -> {
+                try {
+                    val value = data.substring("Vertical Position : ".length).trim().toInt()
+                    verticalPosition = value
+                    updatePositionDisplay()
+                } catch (e: NumberFormatException) {
+                    // Handle invalid number format
+                }
+            }
+            data.startsWith("Angular Position : ") -> {
+                try {
+                    val value = data.substring("Angular Position : ".length).trim().toInt()
+                    angularPosition = value
+                    updatePositionDisplay()
+                } catch (e: NumberFormatException) {
+                    // Handle invalid number format
+                }
+            }
+            data.startsWith("Force : ") -> {
+                try {
+                    val value = data.substring("Reading: ".length).trim().toInt()
+                    forceValue = value
+                    updateForceDisplay()
+                } catch (e: NumberFormatException) {
+                    // Handle invalid number format
+                }
+            }
+        }
     }
 
     private fun updatePositionDisplay() {

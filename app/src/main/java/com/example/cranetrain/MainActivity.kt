@@ -85,17 +85,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Add periodic command sending runnable
-    private val periodicCommandRunnable = object : Runnable {
-        override fun run() {
-            if (isConnected) {
-                sendCommand("7", checkMotorStatus = false) // Don't check motor status for periodic command
-            }
-            // Schedule the next execution after 5 seconds
-            handler.postDelayed(this, 5000)
-        }
-    }
-
     private var windUpdateHandler = Handler(Looper.getMainLooper())
     private val REAL_WIND_DURATION = 20000L // 20 seconds for real values
     private val FAKE_WIND_DURATION = 10000L // 10 seconds for fake values
@@ -378,7 +367,6 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacks(connectionTimeoutRunnable)
-        handler.removeCallbacks(periodicCommandRunnable)
         windUpdateHandler.removeCallbacks(windUpdateRunnable)
         windUpdateHandler.removeCallbacks(windDirectionChangeRunnable)
         windUpdateHandler.removeCallbacks(windCycleRunnable)
@@ -535,9 +523,6 @@ class MainActivity : AppCompatActivity() {
 
                 // Start data reading in a separate thread
                 startBluetoothDataReading()
-                
-                // Start periodic command sending
-                handler.post(periodicCommandRunnable)
             } catch (e: IOException) {
                 // Clean up the socket
                 try {
@@ -580,7 +565,6 @@ class MainActivity : AppCompatActivity() {
                 }
                 
                 handler.removeCallbacks(connectionTimeoutRunnable)
-                handler.removeCallbacks(periodicCommandRunnable) // Stop periodic command sending
                 bluetoothSocket?.close()
                 
                 runOnUiThread {
@@ -621,7 +605,6 @@ class MainActivity : AppCompatActivity() {
                 val inputStream = bluetoothSocket?.inputStream
                 if (inputStream == null) {
                     Log.e("Bluetooth", "Input stream is null")
-                    disconnectFromHC05()
                     return@thread
                 }
 
@@ -655,15 +638,27 @@ class MainActivity : AppCompatActivity() {
                         }
                     } catch (e: IOException) {
                         Log.e("Bluetooth", "Error reading data: ${e.message}")
-                        runOnUiThread {
-                            val logsFragment = supportFragmentManager.fragments.find { 
-                                it is LogsFragment && it.isAdded 
-                            } as? LogsFragment
-                            logsFragment?.addLog("Connection Status: Connection failed")
-                            showMessage("Connection lost: ${e.message}", isError = true)
+                        if (isConnected) {
+                            runOnUiThread {
+                                val logsFragment = supportFragmentManager.fragments.find { 
+                                    it is LogsFragment && it.isAdded 
+                                } as? LogsFragment
+                                logsFragment?.addLog("Connection Status: Connection lost, attempting to recover...")
+                                showMessage("Connection lost, attempting to recover...", isError = true)
+                            }
+                            // Try to reconnect
+                            try {
+                                Thread.sleep(1000) // Wait a bit before reconnecting
+                                if (!isConnected) {
+                                    runOnUiThread {
+                                        showMessage("Reconnecting to HC-05...", isError = false)
+                                    }
+                                    connectToHC05()
+                                }
+                            } catch (e: Exception) {
+                                Log.e("Bluetooth", "Error during reconnection: ${e.message}")
+                            }
                         }
-                        disconnectFromHC05()
-                        break
                     } catch (e: InterruptedException) {
                         Log.d("Bluetooth", "Data reading thread interrupted")
                         break
@@ -671,45 +666,58 @@ class MainActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 Log.e("Bluetooth", "Error in data reading thread: ${e.message}")
-                disconnectFromHC05()
+                if (isConnected) {
+                    disconnectFromHC05()
+                }
             }
         }
     }
 
     private fun processReceivedData(data: String) {
         try {
-            // Split the data by comma to handle multiple values
-            val parts = data.split(",").map { it.trim() }
+            // Log the raw data for debugging
+            Log.d("Bluetooth", "Raw data received: $data")
             
-            // Process each part of the data
-            parts.forEach { part ->
-                when {
-                    part.startsWith("Reading:") -> {
-                        // Extract the numeric value from "Reading: xxx"
-                        val value = part.substringAfter(":").trim()
-                        updateForceValue(value)
-                    }
-                    part.toIntOrNull() != null -> {
-                        // This is the wind speed value
-                        val windSpeed = part.toInt()
-                        checkWindSpeedAndUpdateMotorState(windSpeed)
-                    }
-                    part.startsWith("Jib:") -> {
-                        // Process jib data in format "Jib:vertical,horizontal,angular,force"
-                        val jibData = part.substringAfter(":").split(",")
-                        if (jibData.size == 4) {
-                            val vertical = jibData[0].toIntOrNull() ?: 0
-                            val horizontal = jibData[1].toIntOrNull() ?: 0
-                            val angular = jibData[2].toIntOrNull() ?: 0
-                            val force = jibData[3].toIntOrNull() ?: 0
-                            
-                            // Update jib analysis fragment if it exists
-                            val jibFragment = supportFragmentManager.fragments.find { 
-                                it is JibAnalysisFragment && it.isAdded 
-                            } as? JibAnalysisFragment
-                            jibFragment?.updateJibData(vertical, horizontal, angular, force)
-                        }
-                    }
+            // Process the data based on its format
+            when {
+                data.startsWith("Reading :") -> {
+                    // Handle force data
+                    val forceValue = data.substringAfter(":").trim()
+                    Log.d("Bluetooth", "Force value received: $forceValue")
+                    updateForceValue(forceValue)
+                }
+                data.startsWith("Horizontal Position :") -> {
+                    // Handle horizontal position
+                    val horizontal = data.substringAfter(":").trim().toIntOrNull() ?: 0
+                    Log.d("Bluetooth", "Horizontal position received: $horizontal")
+                    val jibFragment = supportFragmentManager.fragments.find { 
+                        it is JibAnalysisFragment && it.isAdded 
+                    } as? JibAnalysisFragment
+                    jibFragment?.processArduinoData("Horizontal Position : $horizontal")
+                }
+                data.startsWith("Vertical Position :") -> {
+                    // Handle vertical position
+                    val vertical = data.substringAfter(":").trim().toIntOrNull() ?: 0
+                    Log.d("Bluetooth", "Vertical position received: $vertical")
+                    val jibFragment = supportFragmentManager.fragments.find { 
+                        it is JibAnalysisFragment && it.isAdded 
+                    } as? JibAnalysisFragment
+                    jibFragment?.processArduinoData("Vertical Position : $vertical")
+                }
+                data.startsWith("Angular Position :") -> {
+                    // Handle angular position
+                    val angular = data.substringAfter(":").trim().toIntOrNull() ?: 0
+                    Log.d("Bluetooth", "Angular position received: $angular")
+                    val jibFragment = supportFragmentManager.fragments.find { 
+                        it is JibAnalysisFragment && it.isAdded 
+                    } as? JibAnalysisFragment
+                    jibFragment?.processArduinoData("Angular Position : $angular")
+                }
+                data.toIntOrNull() != null -> {
+                    // Handle wind speed value
+                    val windSpeed = data.toInt()
+                    Log.d("Bluetooth", "Wind speed received: $windSpeed")
+                    checkWindSpeedAndUpdateMotorState(windSpeed)
                 }
             }
             
@@ -780,18 +788,21 @@ class MainActivity : AppCompatActivity() {
     fun sendCommand(command: String, checkMotorStatus: Boolean = true) {
         try {
             if (!isConnected) {
+                Log.e("Bluetooth", "Cannot send command: Not connected")
                 showMessage("Not connected to HC-05", isError = true)
                 return
             }
 
-            // Check motor status for all commands except periodic '7'
+            // Check motor status for all commands
             if (checkMotorStatus) {
                 if (!isMotorAttached) {
+                    Log.e("Bluetooth", "Cannot send command: Motor detached")
                     showMessage("Cannot send commands when motor is detached", isError = true)
                     return
                 }
                 
                 if (currentWindSpeed > 100) {
+                    Log.e("Bluetooth", "Cannot send command: High wind speed")
                     showMessage("Cannot send commands when wind speed is high", isError = true)
                     return
                 }
@@ -799,13 +810,14 @@ class MainActivity : AppCompatActivity() {
 
             val outputStream = bluetoothSocket?.outputStream
             if (outputStream == null) {
-                showMessage("Failed to send command: Output stream is null", isError = true)
-                disconnectFromHC05()
+                Log.e("Bluetooth", "Cannot send command: Output stream is null")
                 return
             }
 
             // Add newline to ensure command is properly terminated
             val commandWithNewline = "$command\n"
+            Log.d("Bluetooth", "Attempting to send command: $command")
+            
             outputStream.write(commandWithNewline.toByteArray())
             outputStream.flush() // Ensure data is sent immediately
             
@@ -815,14 +827,12 @@ class MainActivity : AppCompatActivity() {
             } as? LogsFragment
             logsFragment?.addLog("Sent: $command")
             
-            Log.d("Bluetooth", "Command sent: $command")
+            Log.d("Bluetooth", "Command sent successfully: $command")
         } catch (e: IOException) {
             Log.e("Bluetooth", "Error sending command: ${e.message}")
-            showMessage("Failed to send command: ${e.message}", isError = true)
-            disconnectFromHC05()
+            showMessage("Error sending command", isError = true)
         } catch (e: Exception) {
             Log.e("Bluetooth", "Unexpected error sending command: ${e.message}")
-            showMessage("Unexpected error sending command: ${e.message}", isError = true)
         }
     }
 }
