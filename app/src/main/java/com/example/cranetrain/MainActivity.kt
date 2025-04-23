@@ -1,6 +1,7 @@
 package com.example.cranetrain
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
@@ -599,6 +600,7 @@ class MainActivity : AppCompatActivity() {
         snackbar.show()
     }
 
+    @SuppressLint("SuspiciousIndentation")
     private fun startBluetoothDataReading() {
         thread {
             try {
@@ -679,12 +681,17 @@ class MainActivity : AppCompatActivity() {
             Log.d("Bluetooth", "Raw data received: $data")
             
             // Process the data based on its format
-                when {
+            when {
                 data.startsWith("Reading :") -> {
                     // Handle force data
                     val forceValue = data.substringAfter(":").trim()
                     Log.d("Bluetooth", "Force value received: $forceValue")
                     updateForceValue(forceValue)
+                    // Pass the complete data string to JibAnalysisFragment
+                    val jibFragment = supportFragmentManager.fragments.find { 
+                        it is JibAnalysisFragment && it.isAdded 
+                    } as? JibAnalysisFragment
+                    jibFragment?.processArduinoData(data)
                 }
                 data.startsWith("Horizontal Position :") -> {
                     // Handle horizontal position
@@ -717,7 +724,7 @@ class MainActivity : AppCompatActivity() {
                     // Handle wind speed value
                     val windSpeed = data.toInt()
                     Log.d("Bluetooth", "Wind speed received: $windSpeed")
-                        checkWindSpeedAndUpdateMotorState(windSpeed)
+                    checkWindSpeedAndUpdateMotorState(windSpeed)
                 }
             }
             
