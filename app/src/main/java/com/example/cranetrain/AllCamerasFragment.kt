@@ -304,7 +304,7 @@ class AllCamerasFragment : Fragment() {
     private fun showNoSignal(index: Int) {
         try {
             if (index < noSignalOverlays.size) {
-                noSignalOverlays[index].visibility = View.VISIBLE
+        noSignalOverlays[index].visibility = View.VISIBLE
                 previewViews[index].visibility = if (index < 2) View.VISIBLE else View.GONE
                 if (index >= 2 && index - 2 < imageViews.size) {
                     imageViews[index - 2].visibility = View.GONE

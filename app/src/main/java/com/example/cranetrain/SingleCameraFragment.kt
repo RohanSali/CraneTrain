@@ -12,6 +12,7 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
@@ -24,17 +25,30 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import androidx.lifecycle.LifecycleOwner
 import com.example.cranetrain.databinding.FragmentSingleCameraBinding
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
+import okhttp3.Response
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.util.Base64
+import org.json.JSONObject
+import android.os.Handler
+import android.os.Looper
+import android.widget.ImageView
+import android.graphics.drawable.BitmapDrawable
 
 class SingleCameraFragment : Fragment() {
     private var _binding: FragmentSingleCameraBinding? = null
     private val binding get() = _binding!!
     private lateinit var cameraExecutor: ExecutorService
+    private lateinit var webSocketManager: WebSocketManager
     private var cameraProvider: ProcessCameraProvider? = null
     private var preview: Preview? = null
     
     private lateinit var previewView: PreviewView
     private lateinit var noSignalOverlay: FrameLayout
     private val cameraButtons = mutableListOf<Button>()
+    private lateinit var imageView: ImageView // For WebSocket streams
     
     private var usbManager: UsbManager? = null
     private var availableDeviceCameras = 0
@@ -42,6 +56,8 @@ class SingleCameraFragment : Fragment() {
     private var isPermissionGranted = false
     private var currentCameraIndex = 0 // 0-5 for the 6 possible cameras
     private var isFragmentActive = false
+    private var lastFrameReceivedTime = 0L
+    private val handler = Handler(Looper.getMainLooper())
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -68,8 +84,15 @@ class SingleCameraFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         cameraExecutor = Executors.newSingleThreadExecutor()
         isFragmentActive = true
+        
+        // Initialize WebSocket manager
+        webSocketManager = WebSocketManager()
+        
         initializeViews(view)
         checkPermissionAndInitialize()
+        
+        // Connect to WebSocket
+        connectToWebSocket()
     }
 
     private fun initializeViews(view: View) {
@@ -87,7 +110,208 @@ class SingleCameraFragment : Fragment() {
             }
         }
         
+        // Initialize ImageView for WebSocket streams
+        imageView = ImageView(requireContext()).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            scaleType = ImageView.ScaleType.CENTER_CROP
+        }
+        (previewView.parent as? ViewGroup)?.addView(imageView)
+        imageView.visibility = View.GONE
+        
         showNoSignal()
+    }
+
+    private val socketListener = object : WebSocketListener() {
+        private fun isFragmentActive(): Boolean {
+            return isAdded && !isDetached && activity != null && !activity!!.isFinishing
+        }
+
+        private fun runOnUiThreadIfActive(action: () -> Unit) {
+            if (isFragmentActive()) {
+                activity?.runOnUiThread {
+                    if (isFragmentActive()) {
+                        try {
+                            action()
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error in UI thread action: ${e.message}")
+                        }
+                    }
+                }
+            }
+        }
+
+        override fun onOpen(webSocket: WebSocket, response: Response) {
+            try {
+                Log.i(TAG, "WebSocket connected successfully")
+                runOnUiThreadIfActive {
+                    Toast.makeText(requireContext(), "WebSocket connected", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in onOpen: ${e.message}")
+                e.printStackTrace()
+            }
+        }
+
+        override fun onMessage(webSocket: WebSocket, text: String) {
+            if (!isFragmentActive()) {
+                Log.w(TAG, "Fragment not active, ignoring message")
+                return
+            }
+
+            try {
+                Log.i(TAG, "Received WebSocket message, length: ${text.length}")
+                if (text.isEmpty()) {
+                    Log.e(TAG, "Received empty message")
+                    showNoSignal()
+                    return
+                }
+
+                val jsonObject = JSONObject(text)
+                val keys = jsonObject.keys().asSequence().toList()
+                Log.i(TAG, "Parsed JSON object, keys: ${keys.joinToString()}")
+                
+                if (jsonObject.has("frames")) {
+                    val framesArray = jsonObject.getJSONArray("frames")
+                    if (framesArray.length() == 0) {
+                        Log.e(TAG, "Received empty frames array")
+                        showNoSignal()
+                        return
+                    }
+                    
+                    Log.i(TAG, "Processing ${framesArray.length()} frames")
+                    
+                    // Process frames on a background thread
+                    Thread {
+                        if (!isFragmentActive()) {
+                            Log.w(TAG, "Fragment not active, stopping frame processing")
+                            return@Thread
+                        }
+
+                        try {
+                            val bitmaps = mutableListOf<Bitmap>()
+                            var hasError = false
+                            
+                            // Decode all frames first
+                            for (i in 0 until framesArray.length()) {
+                                if (!isFragmentActive()) {
+                                    Log.w(TAG, "Fragment not active, stopping frame decoding")
+                                    return@Thread
+                                }
+
+                                try {
+                                    val base64Image = framesArray.getString(i)
+                                    if (base64Image.isEmpty() || base64Image == "null") {
+                                        Log.e(TAG, "Frame $i is empty or null")
+                                        hasError = true
+                                        break
+                                    }
+                                    
+                                    val imageBytes = Base64.decode(base64Image, Base64.DEFAULT)
+                                    if (imageBytes.isEmpty()) {
+                                        Log.e(TAG, "Frame $i decoded bytes are empty")
+                                        hasError = true
+                                        break
+                                    }
+                                    
+                                    val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+                                    if (bitmap != null) {
+                                        Log.i(TAG, "Successfully decoded frame $i: ${bitmap.width}x${bitmap.height}, config: ${bitmap.config}, isMutable: ${bitmap.isMutable}")
+                                        bitmaps.add(bitmap)
+                                    } else {
+                                        Log.e(TAG, "Failed to decode frame $i - BitmapFactory returned null")
+                                        hasError = true
+                                        break
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "Error processing frame $i: ${e.message}")
+                                    e.printStackTrace()
+                                    hasError = true
+                                    break
+                                }
+                            }
+                            
+                            // Update UI on main thread
+                            runOnUiThreadIfActive {
+                                if (!isFragmentActive()) {
+                                    Log.w(TAG, "Fragment not active, skipping UI update")
+                                    return@runOnUiThreadIfActive
+                                }
+
+                                if (!hasError && bitmaps.size > 0) {
+                                    Log.i(TAG, "Updating UI with ${bitmaps.size} frames")
+                                    // Only update if current camera is a WebSocket camera
+                                    if (currentCameraIndex >= 2) {
+                                        try {
+                                            val frameIndex = currentCameraIndex - 2
+                                            if (frameIndex < bitmaps.size) {
+                                                // Update ImageView
+                                                imageView.setImageBitmap(bitmaps[frameIndex])
+                                                imageView.visibility = View.VISIBLE
+                                                previewView.visibility = View.GONE
+                                                noSignalOverlay.visibility = View.GONE
+                                                
+                                                Log.i(TAG, "Updated WebSocket camera view")
+                                            }
+                                        } catch (e: Exception) {
+                                            Log.e(TAG, "Error updating WebSocket camera view: ${e.message}")
+                                            e.printStackTrace()
+                                            showNoSignal()
+                                        }
+                                    }
+                                } else {
+                                    Log.e(TAG, "Failed to update UI - hasError: $hasError, bitmaps size: ${bitmaps.size}")
+                                    if (currentCameraIndex >= 2) {
+                                        showNoSignal()
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error in frame processing thread: ${e.message}")
+                            e.printStackTrace()
+                        }
+                    }.start()
+                } else if (jsonObject.has("error")) {
+                    val error = jsonObject.getString("error")
+                    Log.e(TAG, "Received error from server: $error")
+                    runOnUiThreadIfActive {
+                        Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show()
+                        showNoSignal()
+                    }
+                } else {
+                    Log.e(TAG, "Received message without 'frames' or 'error' key")
+                    showNoSignal()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error processing WebSocket message: ${e.message}")
+                e.printStackTrace()
+                runOnUiThreadIfActive {
+                    showNoSignal()
+                }
+            }
+        }
+
+        override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+            Log.e(TAG, "WebSocket Error: ${t.message}")
+            t.printStackTrace()
+            runOnUiThreadIfActive {
+                Toast.makeText(requireContext(), "WebSocket connection failed: ${t.message}", Toast.LENGTH_SHORT).show()
+                showNoSignal()
+            }
+        }
+
+        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+            Log.d(TAG, "WebSocket closed with code $code: $reason")
+            runOnUiThreadIfActive {
+                showNoSignal()
+            }
+        }
+    }
+
+    private fun connectToWebSocket() {
+        webSocketManager.connect(socketListener)
     }
 
     private fun checkPermissionAndInitialize() {
@@ -154,9 +378,9 @@ class SingleCameraFragment : Fragment() {
             }
         }
         
-        // Update USB camera buttons
+        // Update WebSocket camera buttons (cameras 3-6)
         for (i in 2..5) {
-            val isAvailable = (i - 2) < availableUsbCameras
+            val isAvailable = true // WebSocket cameras are always available
             cameraButtons[i].isEnabled = isAvailable
             if (isAvailable) {
                 cameraButtons[i].text = "Camera ${i + 1}"
@@ -178,7 +402,7 @@ class SingleCameraFragment : Fragment() {
         
         when {
             index < 2 && isPermissionGranted -> startDeviceCamera(index)
-            index >= 2 -> startUsbCamera(index - 2)
+            index >= 2 -> startWebSocketCamera(index - 2)
             else -> showNoSignal()
         }
     }
@@ -211,6 +435,7 @@ class SingleCameraFragment : Fragment() {
                     
                     // Update UI
                     previewView.visibility = View.VISIBLE
+                    imageView.visibility = View.GONE
                     noSignalOverlay.visibility = View.GONE
                     
                     Log.d(TAG, "Device camera $cameraId started successfully")
@@ -227,14 +452,16 @@ class SingleCameraFragment : Fragment() {
         }, ContextCompat.getMainExecutor(requireContext()))
     }
 
-    private fun startUsbCamera(usbIndex: Int) {
+    private fun startWebSocketCamera(wsIndex: Int) {
+        // WebSocket camera is handled by the socketListener
         previewView.visibility = View.GONE
-        noSignalOverlay.visibility = View.VISIBLE
-        // TODO: Implement USB camera initialization when hardware is available
+        imageView.visibility = View.GONE
+        noSignalOverlay.visibility = View.VISIBLE // Show No Signal initially
     }
 
     private fun showNoSignal() {
         previewView.visibility = View.GONE
+        imageView.visibility = View.GONE
         noSignalOverlay.visibility = View.VISIBLE
     }
 
@@ -253,9 +480,18 @@ class SingleCameraFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        cameraExecutor.shutdown()
-        cameraProvider?.unbindAll()
-        _binding = null
+        try {
+            // Clean up bitmap
+            val drawable = imageView.drawable as? BitmapDrawable
+            drawable?.bitmap?.recycle()
+            
+            cameraExecutor.shutdown()
+            webSocketManager.disconnect()
+            cameraProvider?.unbindAll()
+            _binding = null
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in onDestroyView: ${e.message}")
+        }
     }
 
     companion object {
