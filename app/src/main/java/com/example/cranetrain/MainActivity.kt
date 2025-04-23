@@ -640,7 +640,7 @@ class MainActivity : AppCompatActivity() {
                         Log.e("Bluetooth", "Error reading data: ${e.message}")
                         if (isConnected) {
                         runOnUiThread {
-                            val logsFragment = supportFragmentManager.fragments.find { 
+                            val logsFragment: LogsFragment? = supportFragmentManager.fragments.find {
                                 it is LogsFragment && it.isAdded 
                             } as? LogsFragment
                                 logsFragment?.addLog("Connection Status: Connection lost, attempting to recover...")

@@ -13,7 +13,7 @@ class WebSocketManager {
 
     companion object {
         private const val TAG = "WebSocketManager"
-        private const val WEBSOCKET_URL = "ws://192.168.0.105:8888/camera-streams" // Include the path that server expects
+        private const val WEBSOCKET_URL = "ws://192.168.0.111:8888/camera-streams" // Include the path that server expects
     }
 
     fun connect(listener: WebSocketListener) {

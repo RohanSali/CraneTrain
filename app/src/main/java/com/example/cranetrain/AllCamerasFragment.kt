@@ -50,7 +50,7 @@ class AllCamerasFragment : Fragment() {
     private val cameraTitles = mutableListOf<TextView>()
     private val toggleButtons = mutableListOf<ImageButton>()
     private val imageViews = mutableListOf<ImageView>() // For WebSocket streams
-    
+
     private var usbManager: UsbManager? = null
     private var availableDeviceCameras = 0
     private var availableUsbCameras = 0
@@ -85,9 +85,11 @@ class AllCamerasFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+
         super.onViewCreated(view, savedInstanceState)
+        Log.i(TAG, "✅ onViewCreated() hit")
         cameraExecutor = Executors.newSingleThreadExecutor()
-        
+
         // Initialize WebSocket manager
         webSocketManager = WebSocketManager()
         
@@ -165,7 +167,7 @@ class AllCamerasFragment : Fragment() {
                 requestPermissionLauncher.launch(Manifest.permission.CAMERA)
             }
             else -> {
-                requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+            requestPermissionLauncher.launch(Manifest.permission.CAMERA)
             }
         }
     }
@@ -177,13 +179,13 @@ class AllCamerasFragment : Fragment() {
 
     private fun countAvailableCameras() {
         if (isPermissionGranted) {
-            val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
-            try {
-                val cameraProvider = cameraProviderFuture.get()
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
+        try {
+            val cameraProvider = cameraProviderFuture.get()
                 availableDeviceCameras = minOf(cameraProvider.availableCameraInfos.size, 2)
-                Log.d(TAG, "Found $availableDeviceCameras device cameras")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error counting device cameras", e)
+                Log.i(TAG, "Found $availableDeviceCameras device cameras")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error counting device cameras", e)
                 availableDeviceCameras = 0
             }
         } else {
@@ -193,7 +195,7 @@ class AllCamerasFragment : Fragment() {
         usbManager = requireContext().getSystemService(Context.USB_SERVICE) as? UsbManager
         availableUsbCameras = usbManager?.deviceList?.size ?: 0
         availableUsbCameras = minOf(availableUsbCameras, 4)
-        Log.d(TAG, "Found $availableUsbCameras USB cameras")
+        Log.i(TAG, "Found $availableUsbCameras USB cameras")
     }
 
     private fun startAvailableCameras() {
@@ -281,7 +283,7 @@ class AllCamerasFragment : Fragment() {
                     }
                     previews.add(preview)
                     
-                    Log.d(TAG, "Device camera $cameraId started successfully")
+                    Log.i(TAG, "Device camera $cameraId started successfully")
                 } catch (exc: Exception) {
                     Log.e(TAG, "Use case binding failed", exc)
                     showNoSignal(index)
@@ -318,17 +320,22 @@ class AllCamerasFragment : Fragment() {
 
     private val socketListener = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
-            Log.d(TAG, "WebSocket connected")
+            Log.i(TAG, "WebSocket connected successfully")
             requireActivity().runOnUiThread {
                 Toast.makeText(requireContext(), "WebSocket connected", Toast.LENGTH_SHORT).show()
             }
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
+            Log.i(TAG, "Received WebSocket message, length: ${text.length}")
             try {
                 val jsonObject = JSONObject(text)
+                val keys = jsonObject.keys().asSequence().toList()
+                Log.i(TAG, "Parsed JSON object, keys: ${keys.joinToString()}")
+                
                 if (jsonObject.has("frames")) {
                     val framesArray = jsonObject.getJSONArray("frames")
+                    Log.i(TAG, "Processing ${framesArray.length()} frames")
                     
                     // Process frames on a background thread
                     Thread {
@@ -339,17 +346,35 @@ class AllCamerasFragment : Fragment() {
                         for (i in 0 until framesArray.length()) {
                             try {
                                 val base64Image = framesArray.getString(i)
+                                Log.i(TAG, "Frame $i base64 length: ${base64Image.length}")
+                                
+                                if (base64Image.isEmpty() || base64Image == "null") {
+                                    Log.e(TAG, "Frame $i is empty or null")
+                                    hasError = true
+                                    break
+                                }
+                                
                                 val imageBytes = Base64.decode(base64Image, Base64.DEFAULT)
+                                Log.i(TAG, "Frame $i decoded bytes length: ${imageBytes.size}")
+                                
+                                if (imageBytes.isEmpty()) {
+                                    Log.e(TAG, "Frame $i decoded bytes are empty")
+                                    hasError = true
+                                    break
+                                }
+                                
                                 val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
                                 if (bitmap != null) {
+                                    Log.i(TAG, "Successfully decoded frame $i: ${bitmap.width}x${bitmap.height}")
                                     bitmaps.add(bitmap)
                                 } else {
-                                    Log.e(TAG, "Failed to decode frame $i")
+                                    Log.e(TAG, "Failed to decode frame $i - BitmapFactory returned null")
                                     hasError = true
                                     break
                                 }
                             } catch (e: Exception) {
                                 Log.e(TAG, "Error processing frame $i: ${e.message}")
+                                e.printStackTrace()
                                 hasError = true
                                 break
                             }
@@ -358,9 +383,11 @@ class AllCamerasFragment : Fragment() {
                         // Update UI on main thread
                         Handler(Looper.getMainLooper()).post {
                             if (!hasError && bitmaps.size > 0) {
+                                Log.i(TAG, "Updating UI with ${bitmaps.size} frames")
                                 // Update WebSocket streams (cameras 3-6)
                                 for (i in 0 until minOf(bitmaps.size, imageViews.size)) {
                                     val cameraIndex = i + 2
+                                    Log.i(TAG, "Setting frame for camera $cameraIndex")
                                     // Hide PreviewView and show ImageView
                                     previewViews[cameraIndex].visibility = View.GONE
                                     imageViews[i].visibility = View.VISIBLE
@@ -374,13 +401,8 @@ class AllCamerasFragment : Fragment() {
                                     // Set new bitmap
                                     imageViews[i].setImageBitmap(bitmaps[i])
                                 }
-                                
-                                // Show no signal for remaining cameras
-                                for (i in bitmaps.size until imageViews.size) {
-                                    showNoSignal(i + 2)
-                                    cameraTitles[i + 2].text = "Camera ${i + 3} (No Signal)"
-                                }
                             } else {
+                                Log.e(TAG, "Failed to update UI - hasError: $hasError, bitmaps size: ${bitmaps.size}")
                                 // Show error for all WebSocket streams
                                 for (i in 2 until previewViews.size) {
                                     showNoSignal(i)
@@ -391,6 +413,7 @@ class AllCamerasFragment : Fragment() {
                     }.start()
                 } else if (jsonObject.has("error")) {
                     val error = jsonObject.getString("error")
+                    Log.e(TAG, "Received error from server: $error")
                     requireActivity().runOnUiThread {
                         Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show()
                         // Update WebSocket streams (cameras 3-6)
@@ -399,9 +422,12 @@ class AllCamerasFragment : Fragment() {
                             cameraTitles[i].text = "Camera ${i + 1} (Error)"
                         }
                     }
+                } else {
+                    Log.e(TAG, "Received message without 'frames' or 'error' key")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error processing WebSocket message: ${e.message}")
+                e.printStackTrace()
                 requireActivity().runOnUiThread {
                     // Update WebSocket streams (cameras 3-6)
                     for (i in 2 until previewViews.size) {
@@ -414,6 +440,7 @@ class AllCamerasFragment : Fragment() {
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
             Log.e(TAG, "WebSocket Error: ${t.message}")
+            t.printStackTrace()
             requireActivity().runOnUiThread {
                 Toast.makeText(requireContext(), "WebSocket connection failed: ${t.message}", Toast.LENGTH_SHORT).show()
                 // Update WebSocket streams (cameras 3-6)
@@ -425,6 +452,7 @@ class AllCamerasFragment : Fragment() {
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+            Log.i(TAG, "WebSocket closed with code $code: $reason")
             requireActivity().runOnUiThread {
                 // Update WebSocket streams (cameras 3-6)
                 for (i in 2 until previewViews.size) {
@@ -443,7 +471,7 @@ class AllCamerasFragment : Fragment() {
         // Process the received frame and update the appropriate preview
         // This will depend on your WebSocket server's frame format
         // For now, we'll just log the size
-        Log.d("WebSocket", "Received frame of size: ${bytes.size}")
+        Log.i("WebSocket", "Received frame of size: ${bytes.size}")
         
         // Update UI based on active streams
         activity?.runOnUiThread {
