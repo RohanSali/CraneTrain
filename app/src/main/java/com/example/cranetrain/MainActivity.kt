@@ -639,10 +639,10 @@ class MainActivity : AppCompatActivity() {
                     } catch (e: IOException) {
                         Log.e("Bluetooth", "Error reading data: ${e.message}")
                         if (isConnected) {
-                            runOnUiThread {
-                                val logsFragment = supportFragmentManager.fragments.find { 
-                                    it is LogsFragment && it.isAdded 
-                                } as? LogsFragment
+                        runOnUiThread {
+                            val logsFragment = supportFragmentManager.fragments.find { 
+                                it is LogsFragment && it.isAdded 
+                            } as? LogsFragment
                                 logsFragment?.addLog("Connection Status: Connection lost, attempting to recover...")
                                 showMessage("Connection lost, attempting to recover...", isError = true)
                             }
@@ -667,7 +667,7 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.e("Bluetooth", "Error in data reading thread: ${e.message}")
                 if (isConnected) {
-                    disconnectFromHC05()
+                disconnectFromHC05()
                 }
             }
         }
@@ -679,7 +679,7 @@ class MainActivity : AppCompatActivity() {
             Log.d("Bluetooth", "Raw data received: $data")
             
             // Process the data based on its format
-            when {
+                when {
                 data.startsWith("Reading :") -> {
                     // Handle force data
                     val forceValue = data.substringAfter(":").trim()
@@ -717,7 +717,7 @@ class MainActivity : AppCompatActivity() {
                     // Handle wind speed value
                     val windSpeed = data.toInt()
                     Log.d("Bluetooth", "Wind speed received: $windSpeed")
-                    checkWindSpeedAndUpdateMotorState(windSpeed)
+                        checkWindSpeedAndUpdateMotorState(windSpeed)
                 }
             }
             
