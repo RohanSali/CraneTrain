@@ -19,9 +19,9 @@ class JibAnalysisFragment : Fragment() {
     private var _binding: FragmentJibAnalysisBinding? = null
     private val binding get() = _binding!!
     
-    private var verticalPosition = 0
-    private var horizontalPosition = 0
-    private var angularPosition = 0
+    var verticalPosition = 0
+    var horizontalPosition = 0
+    var angularPosition = 0
     private var forceValue = 0 // Force value kept in volatile memory
     private var isFirstLaunch = true
     private var lastForceUpdateTime = 0L // Track last force update time

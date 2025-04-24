@@ -195,16 +195,16 @@
                 android:id="@+id/rightTabLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                app:tabMode="scrollable"
                 app:tabGravity="fill"
-                app:tabMode="fixed"
+                app:tabIndicatorColor="@color/primary"
                 app:tabTextColor="@color/primary"
                 app:tabSelectedTextColor="@color/primary"
-                app:tabIndicatorColor="@color/primary"
-                app:tabIndicatorHeight="2dp"
+                app:tabMinWidth="0dp"
+                app:tabMaxWidth="0dp"
                 app:tabPaddingStart="4dp"
                 app:tabPaddingEnd="4dp"
-                app:tabMinWidth="48dp"
-                app:tabMaxWidth="0dp" />
+                android:scrollbars="none"/>
 
             <androidx.viewpager2.widget.ViewPager2
                 android:id="@+id/rightViewPager"
@@ -213,4 +213,5 @@
                 android:layout_marginTop="48dp" />
         </FrameLayout>
     </LinearLayout>
-</LinearLayout> 
+</LinearLayout>
+

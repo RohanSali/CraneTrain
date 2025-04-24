@@ -11,9 +11,10 @@
     <string name="tab_3d_view">3D View</string>
     <string name="tab_single_camera">Single Camera</string>
     <string name="tab_object_analysis">Object Analysis</string>
-    <string name="tab_all_cameras">All Cameras</string>
-    <string name="tab_remote_control">Remote Control</string>
-    <string name="tab_numeric_control">Numeric Control</string>
+    <string name="tab_all_cameras">All\nCameras</string>
+    <string name="tab_remote_control">Remote\nControl</string>
+    <string name="tab_numeric_control">Numeric\nControl</string>
     <string name="tab_logs">Logs</string>
     <string name="tab_jib_analysis">Jib Analysis</string>
+    <string name="tab_3d_controls">3D\nControl</string>
 </resources>

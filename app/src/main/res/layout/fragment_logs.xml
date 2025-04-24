@@ -11,6 +11,7 @@
         android:text="Logs"
         android:textSize="20sp"
         android:textStyle="bold"
+        android:textColor="#333333"
         android:layout_marginBottom="16dp"/>
 
     <androidx.cardview.widget.CardView
