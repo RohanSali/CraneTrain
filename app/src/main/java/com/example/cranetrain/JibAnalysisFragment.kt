@@ -261,4 +261,9 @@ class JibAnalysisFragment : Fragment() {
         mainHandler.removeCallbacksAndMessages(null)
         _binding = null
     }
+
+    // Make position values accessible
+    fun getCurrentHorizontalPosition(): Int = horizontalPosition
+    fun getCurrentVerticalPosition(): Int = verticalPosition
+    fun getCurrentAngularPosition(): Int = angularPosition
 } 

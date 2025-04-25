@@ -26,6 +26,8 @@ class ThreeDControlsFragment : Fragment() {
     private var xValue = 0
     private var yValue = 0
     private var zValue = 0
+    private var isOperationInProgress = false
+    private var operationScope: Job? = null
 
     companion object {
         private const val TAG = "ThreeDControlsFragment"
@@ -39,6 +41,7 @@ class ThreeDControlsFragment : Fragment() {
         private const val MAX_VERTICAL = 35
         private const val MIN_ANGULAR = -5
         private const val MAX_ANGULAR = 5
+        private const val POSITION_UPDATE_DELAY = 100L // ms
     }
 
     override fun onCreateView(
@@ -53,12 +56,129 @@ class ThreeDControlsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
-        // Setup input listeners
         setupInputListeners()
+        loadSavedValues()
         
-        // Setup update button
         binding.updateButton.setOnClickListener {
-            updatePositions()
+            if (!isOperationInProgress) {
+                startPositionUpdate()
+            }
+        }
+    }
+
+    private fun startPositionUpdate() {
+        operationScope = CoroutineScope(Dispatchers.Main).launch {
+            isOperationInProgress = true
+            binding.statusIndicator1.setBackgroundColor(resources.getColor(android.R.color.holo_orange_light, null))
+            binding.statusIndicator2.setBackgroundColor(resources.getColor(android.R.color.holo_orange_light, null))
+            binding.statusIndicator3.setBackgroundColor(resources.getColor(android.R.color.holo_orange_light, null))
+            
+            try {
+                val activity = activity as? MainActivity
+                if (activity == null || !activity.isConnected) {
+                    Toast.makeText(context, "Not connected to HC-05", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                // Get current positions from JibAnalysisFragment
+                val jibFragment = activity.supportFragmentManager.fragments.find { 
+                    it is JibAnalysisFragment && it.isAdded 
+                } as? JibAnalysisFragment
+
+                if (jibFragment == null) {
+                    Toast.makeText(context, "Jib Analysis panel not available", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                // Clamp values to extremes
+                val targetX = xValue.coerceIn(MIN_HORIZONTAL, MAX_HORIZONTAL)
+                val targetY = yValue.coerceIn(MIN_VERTICAL, MAX_VERTICAL)
+                val targetZ = zValue.coerceIn(MIN_ANGULAR, MAX_ANGULAR)
+
+                //Function to wait for position update
+                suspend fun waitForPositionUpdate(
+                    currentPosition: Int,
+                    getPosition: () -> Int,
+                    maxAttempts: Int = 10
+                ): Boolean {
+                    var attempts = 0
+                    while (attempts < maxAttempts) {
+                        delay(POSITION_UPDATE_DELAY)
+                        val newPosition = getPosition()
+                        if (newPosition != currentPosition) {
+                            return true
+                        }
+                        attempts++
+                    }
+                    return false
+                }
+
+                // Adjust horizontal position
+                var currentX = jibFragment.getCurrentHorizontalPosition()
+                while (currentX != targetX) {
+                    val command = if (currentX < targetX) "r" else "l"
+                    activity.sendCommand(command)
+                    
+                    while (!waitForPositionUpdate(currentX, { jibFragment.getCurrentHorizontalPosition() })) {
+                        Log.d(TAG,"No horizontal position update received")
+                    }
+                    if (command == "r") currentX++ else currentX--
+                }
+                // Check if any values were clamped
+                val isClampedx = xValue != targetX
+                binding.statusIndicator1.setBackgroundColor(
+                    if (isClampedx) resources.getColor(android.R.color.holo_red_light, null)
+                    else resources.getColor(android.R.color.holo_green_light, null)
+                )
+
+                // Adjust vertical position
+                var currentY = jibFragment.getCurrentVerticalPosition()
+                while (currentY != targetY) {
+                    val command = if (currentY < targetY) "d" else "u"
+                    activity.sendCommand(command)
+                    
+                    while(!waitForPositionUpdate(currentY, { jibFragment.getCurrentVerticalPosition() })) {
+                        Log.d(TAG,"No vertical position update received")
+                    }
+
+                    if (command=="d") currentY++ else currentY--
+                }
+                // Check if any values were clamped
+                val isClampedy = yValue != targetY
+                binding.statusIndicator2.setBackgroundColor(
+                    if (isClampedy) resources.getColor(android.R.color.holo_red_light, null)
+                    else resources.getColor(android.R.color.holo_green_light, null)
+                )
+
+                // Adjust angular position
+                var currentZ = jibFragment.getCurrentAngularPosition()
+                while (currentZ != targetZ) {
+                    val command = if (currentZ < targetZ) "c" else "a"
+                    activity.sendCommand(command)
+                    
+                    while(!waitForPositionUpdate(currentZ, { jibFragment.getCurrentAngularPosition() })) {
+                        Log.d(TAG,"No angular position update received")
+                    }
+
+                    if (command=="c") currentZ++ else currentZ--
+                }
+                // Check if any values were clamped
+                val isClampedz = zValue != targetZ
+                binding.statusIndicator3.setBackgroundColor(
+                    if (isClampedz) resources.getColor(android.R.color.holo_red_light, null)
+                    else resources.getColor(android.R.color.holo_green_light, null)
+                )
+
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Error updating positions: ${e.message}")
+                binding.statusIndicator1.setBackgroundColor(resources.getColor(android.R.color.holo_red_light, null))
+                binding.statusIndicator2.setBackgroundColor(resources.getColor(android.R.color.holo_red_light, null))
+                binding.statusIndicator3.setBackgroundColor(resources.getColor(android.R.color.holo_red_light, null))
+                Toast.makeText(context, "Error updating positions: ${e.message}", Toast.LENGTH_SHORT).show()
+            } finally {
+                isOperationInProgress = false
+            }
         }
     }
 
@@ -68,7 +188,6 @@ class ThreeDControlsFragment : Fragment() {
         yValue = sharedPref.getInt(KEY_Y_VALUE, 0)
         zValue = sharedPref.getInt(KEY_Z_VALUE, 0)
         
-        // Update UI with loaded values
         binding.xInput.setText(xValue.toString())
         binding.yInput.setText(yValue.toString())
         binding.zInput.setText(zValue.toString())
@@ -116,58 +235,9 @@ class ThreeDControlsFragment : Fragment() {
         })
     }
 
-    private fun updatePositions() {
-        try {
-            val activity = activity as? MainActivity
-            if (activity == null || !activity.isConnected) {
-                Toast.makeText(context, "Not connected to HC-05", Toast.LENGTH_SHORT).show()
-                return
-            }
-
-            // Validate input values
-            if (xValue < MIN_HORIZONTAL || xValue > MAX_HORIZONTAL) {
-                Toast.makeText(context, "X must be between $MIN_HORIZONTAL and $MAX_HORIZONTAL", Toast.LENGTH_SHORT).show()
-                return
-            }
-            if (yValue < MIN_VERTICAL || yValue > MAX_VERTICAL) {
-                Toast.makeText(context, "Y must be between $MIN_VERTICAL and $MAX_VERTICAL", Toast.LENGTH_SHORT).show()
-                return
-            }
-            if (zValue < MIN_ANGULAR || zValue > MAX_ANGULAR) {
-                Toast.makeText(context, "Z must be between $MIN_ANGULAR and $MAX_ANGULAR", Toast.LENGTH_SHORT).show()
-                return
-            }
-
-            // Get current positions from JibAnalysisFragment
-            val jibFragment = activity.supportFragmentManager.fragments.find { 
-                it is JibAnalysisFragment && it.isAdded 
-            } as? JibAnalysisFragment
-
-            jibFragment?.let { fragment ->
-                // Compare and send commands
-                if (fragment.horizontalPosition != xValue) {
-                    val command = if (fragment.horizontalPosition < xValue) "r" else "l"
-                    activity.sendCommand(command)
-                }
-                
-                if (fragment.verticalPosition != yValue) {
-                    val command = if (fragment.verticalPosition < yValue) "u" else "d"
-                    activity.sendCommand(command)
-                }
-                
-                if (fragment.angularPosition != zValue) {
-                    val command = if (fragment.angularPosition < zValue) "a" else "c"
-                    activity.sendCommand(command)
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error updating positions: ${e.message}")
-            Toast.makeText(context, "Error updating positions: ${e.message}", Toast.LENGTH_SHORT).show()
-        }
-    }
-
     override fun onDestroyView() {
         super.onDestroyView()
+        operationScope?.cancel()
         _binding = null
     }
 } 
