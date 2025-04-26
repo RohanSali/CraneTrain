@@ -175,7 +175,6 @@ class MainActivity : AppCompatActivity() {
 
         // Right panel setup
         binding.rightViewPager.adapter = RightPanelAdapter(this)
-        
         // Set initial tab configuration
         binding.rightTabLayout.tabMode = TabLayout.MODE_SCROLLABLE
         binding.rightTabLayout.tabGravity = TabLayout.GRAVITY_FILL
